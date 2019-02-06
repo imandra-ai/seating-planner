@@ -43,21 +43,21 @@ let make = _children => {
           padding(px(20)),
         ])}>
         <CssBaseline />
+        <Typography variant=`H2 className={style([marginBottom(px(20))])}>
+          {ReasonReact.string("Seating planner")}
+        </Typography>
         <Paper className={style([padding(px(20))])}>
-          <Typography variant=`H2>
-            {ReasonReact.string("Seating planner")}
-          </Typography>
           <Typography variant=`H4>
             {ReasonReact.string("Guests")}
           </Typography>
-          <Typography className={style([paddingTop(px(10))])}>
+          <Typography className={style([marginTop(px(10))])}>
             {ReasonReact.string(
                "Enter your guests below, one per line. Seperate the traits by a comma, e.g:",
              )}
           </Typography>
           <Typography
             className={style([
-              paddingBottom(px(10)),
+              marginBottom(px(10)),
               fontFamily("monospace"),
               whiteSpace(`pre),
             ])}>
@@ -72,7 +72,7 @@ let make = _children => {
               fontFamily("monospace"),
               whiteSpace(`pre),
               width(pct(80.)),
-              paddingBottom(px(20)),
+              marginBottom(px(20)),
             ])}
             onChange={e =>
               self.send(GuestTextChanged(ReactEvent.Form.target(e)##value))
@@ -80,15 +80,15 @@ let make = _children => {
           />
           <Table>
             <TableHead>
-              <tr>
-                <td> {ReasonReact.string("Name")} </td>
+              <TableRow>
+                <TableCell> {ReasonReact.string("Name")} </TableCell>
                 {ReasonReact.array(
                    Array.map(
-                     t => <td> {ReasonReact.string(t)} </td>,
+                     t => <TableCell> {ReasonReact.string(t)} </TableCell>,
                      traits,
                    ),
                  )}
-              </tr>
+              </TableRow>
             </TableHead>
             <TableBody>
               {let orDash = (g, i) =>
@@ -120,17 +120,22 @@ let make = _children => {
                ReasonReact.array(
                  Array.map(
                    g =>
-                     <tr>
-                       <td> {orDash(g, 0)} </td>
-                       <td> {orDash(g, 1)} </td>
-                       <td> {boolOrDash(g, 2)} </td>
-                       <td> {boolOrDash(g, 3)} </td>
-                     </tr>,
+                     <TableRow>
+                       <TableCell> {orDash(g, 0)} </TableCell>
+                       <TableCell> {orDash(g, 1)} </TableCell>
+                       <TableCell> {boolOrDash(g, 2)} </TableCell>
+                       <TableCell> {boolOrDash(g, 3)} </TableCell>
+                     </TableRow>,
                    self.state.guests,
                  ),
                )}
             </TableBody>
           </Table>
+        </Paper>
+        <Paper className={style([marginTop(px(20)), padding(px(20))])}>
+          <Typography variant=`H4>
+            {ReasonReact.string("Tables")}
+          </Typography>
         </Paper>
       </main>
     );

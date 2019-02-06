@@ -1,0 +1,29 @@
+{
+  "name": "seating-planner",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "bsb -make-world",
+    "watch": "bsb -make-world -w",
+    "clean": "bsb -clean-world",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve-ui": "parcel serve src/index.html"
+  },
+  "keywords": [
+    "BuckleScript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^16.2.0",
+    "react-dom": "^16.2.0",
+    "reason-react": ">=0.4.0"
+  },
+  "devDependencies": {
+    "@jsiebern/bs-material-ui": "^1.0.0",
+    "@material-ui/core": "^3.9.2",
+    "@material-ui/icons": "^3.0.2",
+    "bs-css": "^8.0.1",
+    "bs-platform": "^4.0.18",
+    "parcel-bundler": "^1.11.0"
+  }
+}

@@ -1,0 +1,138 @@
+/* State declaration */
+open Css;
+
+let traits = [|"Music Taste", "Met at college", "Met at work"|];
+
+type state = {guests: array(array(string))};
+
+/* Action declaration */
+type action =
+  | GuestTextChanged(string);
+
+let parseGuestText = (s: string) => {
+  Js.String.split("\n", s)
+  |> Array.map(p => Js.String.splitByRe([%re "/, ?/"], p));
+};
+
+/* Component template declaration.
+   Needs to be **after** state and action declarations! */
+let component = ReasonReact.reducerComponent("Example");
+
+/* greeting and children are props. `children` isn't used, therefore ignored.
+   We ignore it by prepending it with an underscore */
+let make = _children => {
+  /* spread the other default fields of component here and override a few */
+  ...component,
+
+  initialState: () => {guests: [||]},
+
+  /* State transitions */
+  reducer: (action, _state) =>
+    switch (action) {
+    | GuestTextChanged(text) =>
+      ReasonReact.Update({guests: parseGuestText(text)})
+    },
+
+  render: self => {
+    MaterialUi.(
+      <main
+        className={style([
+          width(px(960)),
+          marginLeft(auto),
+          marginRight(auto),
+          padding(px(20)),
+        ])}>
+        <CssBaseline />
+        <Paper className={style([padding(px(20))])}>
+          <Typography variant=`H2>
+            {ReasonReact.string("Seating planner")}
+          </Typography>
+          <Typography variant=`H4>
+            {ReasonReact.string("Guests")}
+          </Typography>
+          <Typography className={style([paddingTop(px(10))])}>
+            {ReasonReact.string(
+               "Enter your guests below, one per line. Seperate the traits by a comma, e.g:",
+             )}
+          </Typography>
+          <Typography
+            className={style([
+              paddingBottom(px(10)),
+              fontFamily("monospace"),
+              whiteSpace(`pre),
+            ])}>
+            {ReasonReact.string("Matt, Drum and Bass, y, y")}
+          </Typography>
+          <TextField
+            multiline=true
+            rows={`Int(5)}
+            rowsMax={`Int(10)}
+            placeholder="Enter guest details"
+            className={style([
+              fontFamily("monospace"),
+              whiteSpace(`pre),
+              width(pct(80.)),
+              paddingBottom(px(20)),
+            ])}
+            onChange={e =>
+              self.send(GuestTextChanged(ReactEvent.Form.target(e)##value))
+            }
+          />
+          <Table>
+            <TableHead>
+              <tr>
+                <td> {ReasonReact.string("Name")} </td>
+                {ReasonReact.array(
+                   Array.map(
+                     t => <td> {ReasonReact.string(t)} </td>,
+                     traits,
+                   ),
+                 )}
+              </tr>
+            </TableHead>
+            <TableBody>
+              {let orDash = (g, i) =>
+                 g
+                 ->Belt.Array.get(i)
+                 ->Belt.Option.getWithDefault("-")
+                 ->ReasonReact.string
+
+               let boolOrDash = (g, i) =>
+                 g
+                 ->Belt.Array.get(i)
+                 ->Belt.Option.map(
+                     fun
+                     | "yes"
+                     | "y"
+                     | "true" =>
+                       <MaterialUi_Icons icon=`Check fontSize=`Small />
+                     | "no"
+                     | "n"
+                     | "false" =>
+                       <MaterialUi_Icons icon=`Close fontSize=`Small />
+                     | _ =>
+                       <MaterialUi_Icons icon=`ErrorOutline fontSize=`Small />,
+                   )
+                 ->Belt.Option.getWithDefault(
+                     <div> {ReasonReact.string("-")} </div>,
+                   )
+
+               ReasonReact.array(
+                 Array.map(
+                   g =>
+                     <tr>
+                       <td> {orDash(g, 0)} </td>
+                       <td> {orDash(g, 1)} </td>
+                       <td> {boolOrDash(g, 2)} </td>
+                       <td> {boolOrDash(g, 3)} </td>
+                     </tr>,
+                   self.state.guests,
+                 ),
+               )}
+            </TableBody>
+          </Table>
+        </Paper>
+      </main>
+    );
+  },
+};

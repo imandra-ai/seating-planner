@@ -4,5 +4,6 @@
 npm-debug.log
 /lib/bs/
 /node_modules/
-.cache
-_opam
+.cache/
+_opam/
+dist/

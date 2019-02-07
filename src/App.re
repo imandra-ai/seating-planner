@@ -3,20 +3,64 @@ open Css;
 
 let traits = [|"Music Taste", "Met at college", "Met at work"|];
 
-type state = {guests: array(array(string))};
+let s = ReasonReact.string;
+
+module PairSet =
+  Belt.Id.MakeComparable({
+    type t = (int, int);
+    let cmp = ((x, y), (x', y')) => {
+      let compare_fst = compare(x, x');
+      if (compare_fst != 0) {
+        compare_fst;
+      } else {
+        compare(y, y');
+      };
+    };
+  });
+
+type guest = {
+  id: int,
+  name: string,
+  traits: array(string),
+};
+
+type state = {
+  guestText: string,
+  guests: array(guest),
+  shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
+  shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
+};
 
 /* Action declaration */
 type action =
-  | GuestTextChanged(string);
+  | GuestTextChanged(string)
+  | TogglePairing(int, int);
 
-let parseGuestText = (s: string) => {
+let parseGuests = (s: string): array(guest) => {
   Js.String.split("\n", s)
-  |> Array.map(p => Js.String.splitByRe([%re "/, ?/"], p));
+  ->Belt.Array.mapWithIndex((id, g) => (id, g))
+  ->Belt.Array.keepMap(((id, g)) => {
+      let parts = Js.String.splitByRe([%re "/, ?/"], g);
+      Belt.Array.get(parts, 0)
+      ->Belt.Option.flatMap(name =>
+          if (String.trim(name) != "") {
+            Some({id, name, traits: Belt.Array.sliceToEnd(parts, 1)});
+          } else {
+            None;
+          }
+        );
+    });
 };
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
 let component = ReasonReact.reducerComponent("Example");
+
+let initialGuestText = {|Dave, Drum and Bass, y, y
+Matt, G-funk, y, y
+Ringo, Rock 'n' Roll, y, y
+Paul, World Music, y, y
+|};
 
 /* greeting and children are props. `children` isn't used, therefore ignored.
    We ignore it by prepending it with an underscore */
@@ -24,13 +68,23 @@ let make = _children => {
   /* spread the other default fields of component here and override a few */
   ...component,
 
-  initialState: () => {guests: [||]},
+  initialState: () => {
+    guestText: initialGuestText,
+    guests: parseGuests(initialGuestText),
+    shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
+    shouldSitApart: Belt.Set.make(~id=(module PairSet)),
+  },
 
   /* State transitions */
-  reducer: (action, _state) =>
+  reducer: (action, state) =>
     switch (action) {
     | GuestTextChanged(text) =>
-      ReasonReact.Update({guests: parseGuestText(text)})
+      ReasonReact.Update({
+        ...state,
+        guestText: text,
+        guests: parseGuests(text),
+      })
+    | TogglePairing(_a, _b) => ReasonReact.NoUpdate
     },
 
   render: self => {
@@ -43,15 +97,11 @@ let make = _children => {
           padding(px(20)),
         ])}>
         <CssBaseline />
-        <Typography variant=`H2 className={style([marginBottom(px(20))])}>
-          {ReasonReact.string("Seating planner")}
-        </Typography>
-        <Paper className={style([padding(px(20))])}>
-          <Typography variant=`H4>
-            {ReasonReact.string("Guests")}
-          </Typography>
+        <Typography variant=`H2> {s("Seating planner")} </Typography>
+        <Paper className={style([padding(px(20)), marginTop(px(40))])}>
+          <Typography variant=`H4> {s("Guests")} </Typography>
           <Typography className={style([marginTop(px(10))])}>
-            {ReasonReact.string(
+            {s(
                "Enter your guests below, one per line. Seperate the traits by a comma, e.g:",
              )}
           </Typography>
@@ -61,13 +111,14 @@ let make = _children => {
               fontFamily("monospace"),
               whiteSpace(`pre),
             ])}>
-            {ReasonReact.string("Matt, Drum and Bass, y, y")}
+            {s("Matt, Drum and Bass, y, y")}
           </Typography>
           <TextField
             multiline=true
             rows={`Int(5)}
             rowsMax={`Int(10)}
             placeholder="Enter guest details"
+            defaultValue={`String(self.state.guestText)}
             className={style([
               fontFamily("monospace"),
               whiteSpace(`pre),
@@ -81,24 +132,21 @@ let make = _children => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell> {ReasonReact.string("Name")} </TableCell>
+                <TableCell> {s("Name")} </TableCell>
                 {ReasonReact.array(
-                   Array.map(
-                     t => <TableCell> {ReasonReact.string(t)} </TableCell>,
-                     traits,
-                   ),
+                   Array.map(t => <TableCell> {s(t)} </TableCell>, traits),
                  )}
               </TableRow>
             </TableHead>
             <TableBody>
-              {let orDash = (g, i) =>
-                 g
+              {let strTraitOrDash = (g, i) =>
+                 g.traits
                  ->Belt.Array.get(i)
                  ->Belt.Option.getWithDefault("-")
-                 ->ReasonReact.string
+                 ->s
 
-               let boolOrDash = (g, i) =>
-                 g
+               let boolTraitOrDash = (g, i) =>
+                 g.traits
                  ->Belt.Array.get(i)
                  ->Belt.Option.map(
                      fun
@@ -113,18 +161,16 @@ let make = _children => {
                      | _ =>
                        <MaterialUi_Icons icon=`ErrorOutline fontSize=`Small />,
                    )
-                 ->Belt.Option.getWithDefault(
-                     <div> {ReasonReact.string("-")} </div>,
-                   )
+                 ->Belt.Option.getWithDefault(<div> {s("-")} </div>)
 
                ReasonReact.array(
                  Array.map(
                    g =>
                      <TableRow>
-                       <TableCell> {orDash(g, 0)} </TableCell>
-                       <TableCell> {orDash(g, 1)} </TableCell>
-                       <TableCell> {boolOrDash(g, 2)} </TableCell>
-                       <TableCell> {boolOrDash(g, 3)} </TableCell>
+                       <TableCell> {g.name} </TableCell>
+                       <TableCell> {strTraitOrDash(g, 0)} </TableCell>
+                       <TableCell> {boolTraitOrDash(g, 1)} </TableCell>
+                       <TableCell> {boolTraitOrDash(g, 2)} </TableCell>
                      </TableRow>,
                    self.state.guests,
                  ),
@@ -133,9 +179,43 @@ let make = _children => {
           </Table>
         </Paper>
         <Paper className={style([marginTop(px(20)), padding(px(20))])}>
-          <Typography variant=`H4>
-            {ReasonReact.string("Tables")}
-          </Typography>
+          <Typography variant=`H4> {s("Seating overrides")} </Typography>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell> {s("Guest")} </TableCell>
+                {ReasonReact.array(
+                   Array.map(
+                     g => <TableCell> {g.name} </TableCell>,
+                     self.state.guests,
+                   ),
+                 )}
+              </TableRow>
+              {ReasonReact.array(
+                 self.state.guests
+                 ->Belt.Array.map(gRow =>
+                     <TableRow>
+                       <TableCell> {gRow.name} </TableCell>
+                       {ReasonReact.array(
+                          {self.state.guests
+                           ->Belt.Array.map(gCol =>
+                               <TableCell>
+                                 <div
+                                   onClick={_e =>
+                                     self.send(
+                                       TogglePairing(gRow.id, gCol.id),
+                                     )
+                                   }>
+                                   {s(".")}
+                                 </div>
+                               </TableCell>
+                             )},
+                        )}
+                     </TableRow>
+                   ),
+               )}
+            </TableHead>
+          </Table>
         </Paper>
       </main>
     );

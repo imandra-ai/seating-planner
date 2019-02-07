@@ -62,6 +62,40 @@ Ringo, Rock 'n' Roll, y, y
 Paul, World Music, y, y
 |};
 
+let normPair = ((a, b)) => (min(a, b), max(a, b));
+
+let areTogether = (s, pair) => {
+  Belt.Set.has(s.shouldSitTogether, normPair(pair));
+};
+
+let areApart = (s, pair) => {
+  Belt.Set.has(s.shouldSitApart, normPair(pair));
+};
+
+let setTogether = (s, pair) => {
+  {
+    ...s,
+    shouldSitApart: Belt.Set.remove(s.shouldSitApart, normPair(pair)),
+    shouldSitTogether: Belt.Set.add(s.shouldSitTogether, normPair(pair)),
+  };
+};
+
+let setApart = (s, pair) => {
+  {
+    ...s,
+    shouldSitApart: Belt.Set.add(s.shouldSitApart, normPair(pair)),
+    shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
+  };
+};
+
+let setNeither = (s, pair) => {
+  {
+    ...s,
+    shouldSitApart: Belt.Set.remove(s.shouldSitApart, normPair(pair)),
+    shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
+  };
+};
+
 /* greeting and children are props. `children` isn't used, therefore ignored.
    We ignore it by prepending it with an underscore */
 let make = _children => {
@@ -84,7 +118,16 @@ let make = _children => {
         guestText: text,
         guests: parseGuests(text),
       })
-    | TogglePairing(_a, _b) => ReasonReact.NoUpdate
+    | TogglePairing(a, b) =>
+      ReasonReact.Update(
+        if (areTogether(state, (a, b))) {
+          setApart(state, (a, b));
+        } else if (areApart(state, (a, b))) {
+          setNeither(state, (a, b));
+        } else {
+          setTogether(state, (a, b));
+        },
+      )
     },
 
   render: self => {
@@ -186,7 +229,10 @@ let make = _children => {
                 <TableCell> {s("Guest")} </TableCell>
                 {ReasonReact.array(
                    Array.map(
-                     g => <TableCell> {g.name} </TableCell>,
+                     g =>
+                       <TableCell className={style([textAlign(center)])}>
+                         {g.name}
+                       </TableCell>,
                      self.state.guests,
                    ),
                  )}
@@ -199,15 +245,39 @@ let make = _children => {
                        {ReasonReact.array(
                           {self.state.guests
                            ->Belt.Array.map(gCol =>
-                               <TableCell>
-                                 <div
+                               <TableCell
+                                 className={style([textAlign(center)])}>
+                                 <IconButton
                                    onClick={_e =>
                                      self.send(
                                        TogglePairing(gRow.id, gCol.id),
                                      )
                                    }>
-                                   {s(".")}
-                                 </div>
+                                   {if (areTogether(
+                                          self.state,
+                                          (gRow.id, gCol.id),
+                                        )) {
+                                      <MaterialUi_Icons
+                                        icon=`SentimentVerySatisfied
+                                        fontSize=`Small
+                                        color=`Primary
+                                      />;
+                                    } else if (areApart(
+                                                 self.state,
+                                                 (gRow.id, gCol.id),
+                                               )) {
+                                      <MaterialUi_Icons
+                                        icon=`SentimentVeryDissatisfied
+                                        fontSize=`Small
+                                        color=`Secondary
+                                      />;
+                                    } else {
+                                      <MaterialUi_Icons
+                                        icon=`SentimentSatisfied
+                                        fontSize=`Small
+                                      />;
+                                    }}
+                                 </IconButton>
                                </TableCell>
                              )},
                         )}

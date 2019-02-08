@@ -170,7 +170,10 @@ let make = _children => {
               <TableRow>
                 <TableCell> {s("Name")} </TableCell>
                 {ReasonReact.array(
-                   Array.map(t => <TableCell> {s(t)} </TableCell>, traits),
+                   Array.map(
+                     t => <TableCell key=t> {s(t)} </TableCell>,
+                     traits,
+                   ),
                  )}
               </TableRow>
             </TableHead>
@@ -202,7 +205,7 @@ let make = _children => {
                ReasonReact.array(
                  Array.map(
                    g =>
-                     <TableRow>
+                     <TableRow key={string_of_int(g.id)}>
                        <TableCell> {g.name} </TableCell>
                        <TableCell> {strTraitOrDash(g, 0)} </TableCell>
                        <TableCell> {boolTraitOrDash(g, 1)} </TableCell>
@@ -222,7 +225,12 @@ let make = _children => {
                 <TableCell> {s("Guest")} </TableCell>
                 {ReasonReact.array(
                    Array.map(
-                     g => <TableCell> {g.name} </TableCell>,
+                     g =>
+                       <TableCell
+                         key={string_of_int({g.id})}
+                         className={style([textAlign(center)])}>
+                         {g.name}
+                       </TableCell>,
                      self.state.guests,
                    ),
                  )}
@@ -232,12 +240,18 @@ let make = _children => {
               {ReasonReact.array(
                  self.state.guests
                  ->Belt.Array.map(gRow =>
-                     <TableRow>
+                     <TableRow key={string_of_int({gRow.id})}>
                        <TableCell> {gRow.name} </TableCell>
                        {ReasonReact.array(
                           self.state.guests
                           ->Belt.Array.map(gCol =>
-                              <TableCell>
+                              <TableCell
+                                key={Printf.sprintf(
+                                  "%d-%d",
+                                  gRow.id,
+                                  gCol.id,
+                                )}
+                                className={style([textAlign(center)])}>
                                 {if (gRow.id == gCol.id) {
                                    <IconButton disabled=true>
                                      <MaterialUi_Icons

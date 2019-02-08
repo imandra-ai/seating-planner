@@ -36,7 +36,7 @@ type action =
   | GuestTextChanged(string)
   | TogglePairing(int, int);
 
-let parseGuests = (s: string): array(guest) => {
+let parseGuests = (s: string): array(guest) =>
   Js.String.split("\n", s)
   ->Belt.Array.mapWithIndex((id, g) => (id, g))
   ->Belt.Array.keepMap(((id, g)) => {
@@ -50,7 +50,6 @@ let parseGuests = (s: string): array(guest) => {
           }
         );
     });
-};
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
@@ -64,36 +63,27 @@ Paul, World Music, y, y
 
 let normPair = ((a, b)) => (min(a, b), max(a, b));
 
-let areTogether = (s, pair) => {
+let areTogether = (s, pair) =>
   Belt.Set.has(s.shouldSitTogether, normPair(pair));
-};
 
-let areApart = (s, pair) => {
-  Belt.Set.has(s.shouldSitApart, normPair(pair));
-};
+let areApart = (s, pair) => Belt.Set.has(s.shouldSitApart, normPair(pair));
 
 let setTogether = (s, pair) => {
-  {
-    ...s,
-    shouldSitApart: Belt.Set.remove(s.shouldSitApart, normPair(pair)),
-    shouldSitTogether: Belt.Set.add(s.shouldSitTogether, normPair(pair)),
-  };
+  ...s,
+  shouldSitApart: Belt.Set.remove(s.shouldSitApart, normPair(pair)),
+  shouldSitTogether: Belt.Set.add(s.shouldSitTogether, normPair(pair)),
 };
 
 let setApart = (s, pair) => {
-  {
-    ...s,
-    shouldSitApart: Belt.Set.add(s.shouldSitApart, normPair(pair)),
-    shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
-  };
+  ...s,
+  shouldSitApart: Belt.Set.add(s.shouldSitApart, normPair(pair)),
+  shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
 };
 
 let setNeither = (s, pair) => {
-  {
-    ...s,
-    shouldSitApart: Belt.Set.remove(s.shouldSitApart, normPair(pair)),
-    shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
-  };
+  ...s,
+  shouldSitApart: Belt.Set.remove(s.shouldSitApart, normPair(pair)),
+  shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
 };
 
 /* greeting and children are props. `children` isn't used, therefore ignored.
@@ -102,12 +92,15 @@ let make = _children => {
   /* spread the other default fields of component here and override a few */
   ...component,
 
-  initialState: () => {
-    guestText: initialGuestText,
-    guests: parseGuests(initialGuestText),
-    shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
-    shouldSitApart: Belt.Set.make(~id=(module PairSet)),
-  },
+  initialState: () =>
+    {
+      guestText: initialGuestText,
+      guests: parseGuests(initialGuestText),
+      shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
+      shouldSitApart: Belt.Set.make(~id=(module PairSet)),
+    }
+    ->setTogether((1, 3))
+    ->setApart((2, 4)),
 
   /* State transitions */
   reducer: (action, state) =>
@@ -130,7 +123,7 @@ let make = _children => {
       )
     },
 
-  render: self => {
+  render: self =>
     MaterialUi.(
       <main
         className={style([
@@ -229,65 +222,72 @@ let make = _children => {
                 <TableCell> {s("Guest")} </TableCell>
                 {ReasonReact.array(
                    Array.map(
-                     g =>
-                       <TableCell className={style([textAlign(center)])}>
-                         {g.name}
-                       </TableCell>,
+                     g => <TableCell> {g.name} </TableCell>,
                      self.state.guests,
                    ),
                  )}
               </TableRow>
+            </TableHead>
+            <TableBody>
               {ReasonReact.array(
                  self.state.guests
                  ->Belt.Array.map(gRow =>
                      <TableRow>
                        <TableCell> {gRow.name} </TableCell>
                        {ReasonReact.array(
-                          {self.state.guests
-                           ->Belt.Array.map(gCol =>
-                               <TableCell
-                                 className={style([textAlign(center)])}>
-                                 <IconButton
-                                   onClick={_e =>
-                                     self.send(
-                                       TogglePairing(gRow.id, gCol.id),
-                                     )
-                                   }>
-                                   {if (areTogether(
-                                          self.state,
-                                          (gRow.id, gCol.id),
-                                        )) {
-                                      <MaterialUi_Icons
-                                        icon=`SentimentVerySatisfied
-                                        fontSize=`Small
-                                        color=`Primary
-                                      />;
-                                    } else if (areApart(
-                                                 self.state,
-                                                 (gRow.id, gCol.id),
-                                               )) {
-                                      <MaterialUi_Icons
-                                        icon=`SentimentVeryDissatisfied
-                                        fontSize=`Small
-                                        color=`Secondary
-                                      />;
-                                    } else {
-                                      <MaterialUi_Icons
-                                        icon=`SentimentSatisfied
-                                        fontSize=`Small
-                                      />;
-                                    }}
-                                 </IconButton>
-                               </TableCell>
-                             )},
+                          self.state.guests
+                          ->Belt.Array.map(gCol =>
+                              <TableCell>
+                                {if (gRow.id == gCol.id) {
+                                   <IconButton disabled=true>
+                                     <MaterialUi_Icons
+                                       icon=`Close
+                                       fontSize=`Small
+                                       color=`Disabled
+                                     />
+                                   </IconButton>;
+                                 } else {
+                                   <IconButton
+                                     onClick={_e =>
+                                       self.send(
+                                         TogglePairing(gRow.id, gCol.id),
+                                       )
+                                     }>
+                                     {if (areTogether(
+                                            self.state,
+                                            (gRow.id, gCol.id),
+                                          )) {
+                                        <MaterialUi_Icons
+                                          icon=`SentimentVerySatisfied
+                                          fontSize=`Small
+                                          color=`Primary
+                                        />;
+                                      } else if (areApart(
+                                                   self.state,
+                                                   (gRow.id, gCol.id),
+                                                 )) {
+                                        <MaterialUi_Icons
+                                          icon=`SentimentVeryDissatisfied
+                                          fontSize=`Small
+                                          color=`Secondary
+                                        />;
+                                      } else {
+                                        <MaterialUi_Icons
+                                          icon=`SentimentSatisfied
+                                          fontSize=`Small
+                                        />;
+                                      }}
+                                   </IconButton>;
+                                 }}
+                              </TableCell>
+                            ),
                         )}
                      </TableRow>
                    ),
                )}
-            </TableHead>
+            </TableBody>
           </Table>
         </Paper>
       </main>
-    );
-  },
+    ),
 };

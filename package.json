@@ -24,6 +24,7 @@
     "@material-ui/icons": "^3.0.2",
     "bs-css": "^8.0.1",
     "bs-platform": "^4.0.18",
+    "d3": "^4.13.0",
     "parcel-bundler": "^1.11.0"
   }
 }

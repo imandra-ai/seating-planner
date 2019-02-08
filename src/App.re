@@ -26,6 +26,7 @@ type guest = {
 
 type state = {
   guestText: string,
+  constraintText: string,
   guests: array(guest),
   shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
   shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
@@ -34,7 +35,8 @@ type state = {
 /* Action declaration */
 type action =
   | GuestTextChanged(string)
-  | TogglePairing(int, int);
+  | TogglePairing(int, int)
+  | ConstraintTextChanged(string);
 
 let parseGuests = (s: string): array(guest) =>
   Js.String.split("\n", s)
@@ -61,6 +63,8 @@ Ringo, Rock 'n' Roll, y, y
 Paul, World Music, y, y
 |};
 
+let initialConstraintText = {|let x = 3;;|};
+
 let normPair = ((a, b)) => (min(a, b), max(a, b));
 
 let areTogether = (s, pair) =>
@@ -86,6 +90,9 @@ let setNeither = (s, pair) => {
   shouldSitTogether: Belt.Set.remove(s.shouldSitTogether, normPair(pair)),
 };
 
+let paperStyles = style([padding(px(20)), marginTop(px(20))]);
+let paperHeadingStyles = style([marginBottom(px(20))]);
+
 /* greeting and children are props. `children` isn't used, therefore ignored.
    We ignore it by prepending it with an underscore */
 let make = _children => {
@@ -95,6 +102,7 @@ let make = _children => {
   initialState: () =>
     {
       guestText: initialGuestText,
+      constraintText: initialConstraintText,
       guests: parseGuests(initialGuestText),
       shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
       shouldSitApart: Belt.Set.make(~id=(module PairSet)),
@@ -111,6 +119,8 @@ let make = _children => {
         guestText: text,
         guests: parseGuests(text),
       })
+    | ConstraintTextChanged(text) =>
+      ReasonReact.Update({...state, constraintText: text})
     | TogglePairing(a, b) =>
       ReasonReact.Update(
         if (areTogether(state, (a, b))) {
@@ -133,9 +143,13 @@ let make = _children => {
           padding(px(20)),
         ])}>
         <CssBaseline />
-        <Typography variant=`H2> {s("Seating planner")} </Typography>
-        <Paper className={style([padding(px(20)), marginTop(px(40))])}>
-          <Typography variant=`H4> {s("Guests")} </Typography>
+        <Typography variant=`H2 className={style([marginBottom(px(20))])}>
+          {s("Seating planner")}
+        </Typography>
+        <Paper className=paperStyles>
+          <Typography variant=`H4 className=paperHeadingStyles>
+            {s("Guests")}
+          </Typography>
           <Typography className={style([marginTop(px(10))])}>
             {s(
                "Enter your guests below, one per line. Seperate the traits by a comma, e.g:",
@@ -217,8 +231,10 @@ let make = _children => {
             </TableBody>
           </Table>
         </Paper>
-        <Paper className={style([marginTop(px(20)), padding(px(20))])}>
-          <Typography variant=`H4> {s("Seating overrides")} </Typography>
+        <Paper className=paperStyles>
+          <Typography variant=`H4 className=paperHeadingStyles>
+            {s("Pairings")}
+          </Typography>
           <Table>
             <TableHead>
               <TableRow>
@@ -300,6 +316,35 @@ let make = _children => {
                )}
             </TableBody>
           </Table>
+        </Paper>
+        <Paper className=paperStyles>
+          <Typography variant=`H4 className=paperHeadingStyles>
+            {s("Your constraints")}
+          </Typography>
+          <TextField
+            multiline=true
+            rows={`Int(20)}
+            rowsMax={`Int(20)}
+            placeholder="Enter your seating constraints"
+            defaultValue={`String(self.state.constraintText)}
+            className={style([
+              fontFamily("monospace"),
+              whiteSpace(`pre),
+              width(pct(80.)),
+              marginBottom(px(20)),
+            ])}
+            onChange={e =>
+              self.send(
+                ConstraintTextChanged(ReactEvent.Form.target(e)##value),
+              )
+            }
+          />
+        </Paper>
+        <Paper className=paperStyles>
+          <Typography variant=`H4 className=paperHeadingStyles>
+            {s("The seating arrangement")}
+          </Typography>
+          <svg id="seats" width="900" height="500" />
         </Paper>
       </main>
     ),

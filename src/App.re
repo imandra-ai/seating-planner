@@ -226,10 +226,10 @@ let make = _children => {
                 {ReasonReact.array(
                    Array.map(
                      g =>
-                       <TableCell
-                         key={string_of_int({g.id})}
-                         className={style([textAlign(center)])}>
-                         {g.name}
+                       <TableCell key={string_of_int({g.id})}>
+                         <div className={style([paddingLeft(px(8))])}>
+                           {s(g.name)}
+                         </div>
                        </TableCell>,
                      self.state.guests,
                    ),
@@ -250,8 +250,7 @@ let make = _children => {
                                   "%d-%d",
                                   gRow.id,
                                   gCol.id,
-                                )}
-                                className={style([textAlign(center)])}>
+                                )}>
                                 {if (gRow.id == gCol.id) {
                                    <IconButton disabled=true>
                                      <MaterialUi_Icons

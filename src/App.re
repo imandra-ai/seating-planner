@@ -100,7 +100,7 @@ let make = _children => {
       shouldSitApart: Belt.Set.make(~id=(module PairSet)),
     }
     ->setTogether((1, 3))
-    ->setApart((2, 4)),
+    ->setApart((0, 2)),
 
   /* State transitions */
   reducer: (action, state) =>

@@ -22,7 +22,8 @@
     "@jsiebern/bs-material-ui",
     "bs-css",
     "bs-decoders",
-    "bs-imandra-client"
+    "bs-imandra-client",
+    "imandra-prelude"
   ],
   "refmt": 3
 }

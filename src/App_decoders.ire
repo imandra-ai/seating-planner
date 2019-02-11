@@ -1,5 +1,7 @@
+[@program];
 module D = Decoders;
 
+[@program];
 module Decode = (D: D.Decode.S) => {
   open D;
 
@@ -8,17 +10,20 @@ module Decode = (D: D.Decode.S) => {
       list(int)
       >>= (
         fun
-        | [y1, y2] => succeed((y1, y2))
+        | [y1, y2] => succeed((Z.of_int(y1), Z.of_int(y2)))
         | _ => fail("expected 2 elements for a pair")
       ),
     );
 };
 
+[@program];
 module Encode = (E: D.Encode.S) => {
   open E;
 
   let pairs: encoder(list((int, int))) =
     (xs: list((int, int))) =>
       xs
-      |> list((x: (int, int)) => [fst(x), snd(x)] |> list(y => int(y)));
+      |> list((x: (int, int)) =>
+           [fst(x), snd(x)] |> list(y => int(Z.to_int(y)))
+         );
 };

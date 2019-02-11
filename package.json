@@ -14,6 +14,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "bs-decoders": "https://github.com/mattjbray/ocaml-decoders.git#27deef2c5d32366950955ea96a2ada3ed12e6f5e",
+    "bs-imandra-client": "git+https://github.com/aestheticintegration/bs-imandra-client.git",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "reason-react": ">=0.4.0"
@@ -23,7 +25,6 @@
     "@material-ui/core": "^3.9.2",
     "@material-ui/icons": "^3.0.2",
     "bs-css": "^8.0.1",
-    "bs-decoders": "^0.1.2",
     "bs-platform": "^4.0.18",
     "d3": "^4.13.0",
     "parcel-bundler": "^1.11.0"

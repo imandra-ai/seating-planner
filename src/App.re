@@ -24,7 +24,13 @@ type guest = {
   traits: array(string),
 };
 
+type initState =
+  | Loading
+  | Error(Imandra_client.Error.t)
+  | Loaded;
+
 type state = {
+  initState,
   guestText: string,
   constraintText: string,
   guests: array(guest),
@@ -36,7 +42,8 @@ type state = {
 type action =
   | GuestTextChanged(string)
   | TogglePairing(int, int)
-  | ConstraintTextChanged(string);
+  | ConstraintTextChanged(string)
+  | SetInitState(initState);
 
 let parseGuests = (s: string): array(guest) =>
   Js.String.split("\n", s)
@@ -93,14 +100,35 @@ let setNeither = (s, pair) => {
 let paperStyles = style([padding(px(20)), marginTop(px(20))]);
 let paperHeadingStyles = style([marginBottom(px(20))]);
 
+let serverInfo: Imandra_client.Server_info.t = {url: "http://localhost:3000"};
+let setupScriptPath = "src/App_setup.ire";
+
 /* greeting and children are props. `children` isn't used, therefore ignored.
    We ignore it by prepending it with an underscore */
 let make = _children => {
   /* spread the other default fields of component here and override a few */
   ...component,
 
+  didMount: self => {
+    let _p =
+      Imandra_client.Eval.by_src(
+        ~syntax=Imandra_client.Api.Reason,
+        ~src=Printf.sprintf("#use \"%s\"", setupScriptPath),
+        serverInfo,
+      )
+      |> Js.Promise.then_(v => {
+           switch (v) {
+           | Belt.Result.Ok(_) => self.send(SetInitState(Loaded))
+           | Belt.Result.Error(e) => self.send(SetInitState(Error(e)))
+           };
+           Js.Promise.resolve();
+         });
+    ();
+  },
+
   initialState: () =>
     {
+      initState: Loading,
       guestText: initialGuestText,
       constraintText: initialConstraintText,
       guests: parseGuests(initialGuestText),
@@ -113,6 +141,22 @@ let make = _children => {
   /* State transitions */
   reducer: (action, state) =>
     switch (action) {
+    | SetInitState(s) =>
+      ReasonReact.UpdateWithSideEffects(
+        {...state, initState: s},
+        _ =>
+          switch (s) {
+          | Loaded =>
+            Js.Console.log(
+              Printf.sprintf("Imandra: Loaded file: %s", setupScriptPath),
+            )
+          | Error(e) =>
+            Js.Console.error(
+              Format.asprintf("Imandra: %a", Imandra_client.Error.pp, e),
+            )
+          | _ => ()
+          },
+      )
     | GuestTextChanged(text) =>
       ReasonReact.Update({
         ...state,

@@ -21,7 +21,8 @@
     "reason-react",
     "@jsiebern/bs-material-ui",
     "bs-css",
-    "bs-decoders"
+    "bs-decoders",
+    "bs-imandra-client"
   ],
   "refmt": 3
 }

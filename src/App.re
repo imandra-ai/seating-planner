@@ -238,9 +238,12 @@ let make = _children => {
                 Printf.sprintf(
                   {|
 #redef true;;
+type pairList = (int * int) list;;
 #program;;
-let shouldSitTogether = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn [@@reflect];;
-let shouldSitApart = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn [@@reflect];;
+let shouldSitTogether : pairList = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn;;
+Imandra.port ~var:"shouldSitTogether" "shouldSitTogether";;
+let shouldSitApart : pairList = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn;;
+Imandra.port ~var:"shouldSitApart" "shouldSitApart";;
 #logic;;
 #show shouldSitTogether;;
 #show shouldSitApart;;

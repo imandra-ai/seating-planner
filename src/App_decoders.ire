@@ -1,11 +1,13 @@
 [@program];
 module D = Decoders;
 
+type pairList = list((int, int));
+
 [@program];
 module Decode = (D: D.Decode.S) => {
   open D;
 
-  let pairs: decoder(list((int, int))) =
+  let pairs: decoder(pairList) =
     list(
       list(int)
       >>= (
@@ -20,7 +22,7 @@ module Decode = (D: D.Decode.S) => {
 module Encode = (E: D.Encode.S) => {
   open E;
 
-  let pairs: encoder(list((int, int))) =
+  let pairs: encoder(pairList) =
     (xs: list((int, int))) =>
       xs
       |> list((x: (int, int)) =>

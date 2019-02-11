@@ -7,13 +7,13 @@ let s = ReasonReact.string;
 
 module PairSet =
   Belt.Id.MakeComparable({
-    type t = (int, int);
-    let cmp = ((x, y), (x', y')) => {
-      let compare_fst = compare(x, x');
+    type t = (Z.t, Z.t);
+    let cmp = ((x, y): t, (x', y'): t) => {
+      let compare_fst = Z.compare(x, x');
       if (compare_fst != 0) {
         compare_fst;
       } else {
-        compare(y, y');
+        Z.compare(y, y');
       };
     };
   });
@@ -29,13 +29,20 @@ type initState =
   | Error(Imandra_client.Error.t)
   | Loaded;
 
+type fetchState =
+  | Waiting
+  | Loading
+  | Error(Imandra_client.Error.t)
+  | Loaded;
+
 type state = {
   initState,
+  fetchState,
   guestText: string,
   constraintText: string,
   guests: array(guest),
-  shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
-  shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
+  shouldSitTogether: Belt.Set.t((Z.t, Z.t), PairSet.identity),
+  shouldSitApart: Belt.Set.t((Z.t, Z.t), PairSet.identity),
 };
 
 /* Action declaration */
@@ -43,7 +50,9 @@ type action =
   | GuestTextChanged(string)
   | TogglePairing(int, int)
   | ConstraintTextChanged(string)
-  | SetInitState(initState);
+  | SetInitState(initState)
+  | SetFetchState(fetchState)
+  | Submit;
 
 let parseGuests = (s: string): array(guest) =>
   Js.String.split("\n", s)
@@ -72,7 +81,7 @@ Paul, World Music, y, y
 
 let initialConstraintText = {|let x = 3;;|};
 
-let normPair = ((a, b)) => (min(a, b), max(a, b));
+let normPair = ((a, b)) => (Z.of_int(min(a, b)), Z.of_int(max(a, b)));
 
 let areTogether = (s, pair) =>
   Belt.Set.has(s.shouldSitTogether, normPair(pair));
@@ -103,6 +112,9 @@ let paperHeadingStyles = style([marginBottom(px(20))]);
 let serverInfo: Imandra_client.Server_info.t = {url: "http://localhost:3000"};
 let setupScriptPath = "src/App_setup.ire";
 
+module D = App_decoders.Decode(Decoders_bs.Decode);
+module E = App_decoders.Encode(Decoders_bs.Encode);
+
 /* greeting and children are props. `children` isn't used, therefore ignored.
    We ignore it by prepending it with an underscore */
 let make = _children => {
@@ -129,6 +141,7 @@ let make = _children => {
   initialState: () =>
     {
       initState: Loading,
+      fetchState: Waiting,
       guestText: initialGuestText,
       constraintText: initialConstraintText,
       guests: parseGuests(initialGuestText),
@@ -148,8 +161,25 @@ let make = _children => {
           switch (s) {
           | Loaded =>
             Js.Console.log(
-              Printf.sprintf("Imandra: Loaded file: %s", setupScriptPath),
+              Printf.sprintf(
+                "Imandra init: Loaded file: %s",
+                setupScriptPath,
+              ),
             )
+          | Error(e) =>
+            Js.Console.error(
+              Format.asprintf("Imandra init: %a", Imandra_client.Error.pp, e),
+            )
+          | _ => ()
+          },
+      )
+    | SetFetchState(s) =>
+      ReasonReact.UpdateWithSideEffects(
+        {...state, fetchState: s},
+        _ =>
+          switch (s) {
+          | Loading => Js.Console.log(Printf.sprintf("Imandra: loading"))
+          | Loaded => Js.Console.log(Printf.sprintf("Imandra: loaded"))
           | Error(e) =>
             Js.Console.error(
               Format.asprintf("Imandra: %a", Imandra_client.Error.pp, e),
@@ -157,6 +187,7 @@ let make = _children => {
           | _ => ()
           },
       )
+
     | GuestTextChanged(text) =>
       ReasonReact.Update({
         ...state,
@@ -166,6 +197,13 @@ let make = _children => {
     | ConstraintTextChanged(text) =>
       ReasonReact.Update({...state, constraintText: text})
     | TogglePairing(a, b) =>
+      Js.Console.log(
+        Printf.sprintf(
+          "toggled %s, %s",
+          string_of_int(a),
+          string_of_int(b),
+        ),
+      );
       ReasonReact.Update(
         if (areTogether(state, (a, b))) {
           setApart(state, (a, b));
@@ -173,6 +211,59 @@ let make = _children => {
           setNeither(state, (a, b));
         } else {
           setTogether(state, (a, b));
+        },
+      );
+    | Submit =>
+      ReasonReact.UpdateWithSideEffects(
+        {...state, fetchState: Loading},
+        self => {
+          let togetherJson =
+            Decoders_bs.Encode.encode_string(
+              E.pairs,
+              Belt.Set.toList(state.shouldSitTogether) /* ->Belt.List.map(((a, b)) => (Z.of_int(a), Z.of_int(b))) */,
+            );
+          let apartJson =
+            Decoders_bs.Encode.encode_string(
+              E.pairs,
+              Belt.Set.toList(state.shouldSitApart),
+              /* ->Belt.List.map(((a, b)) => (Z.of_int(a), Z.of_int(b))), */
+            );
+
+          self.send(SetFetchState(Loading));
+
+          let _p =
+            Imandra_client.Eval.by_src(
+              ~syntax=Imandra_client.Api.OCaml,
+              ~src=
+                Printf.sprintf(
+                  {|
+#redef true;;
+type pairList = (int * int) list;;
+#program;;
+let shouldSitTogether : pairList = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn;;
+Imandra.port ~var:"shouldSitTogether" "shouldSitTogether";;
+let shouldSitApart : pairList = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn;;
+Imandra.port ~var:"shouldSitApart" "shouldSitApart";;
+#logic;;
+#show shouldSitTogether;;
+#show shouldSitApart;;
+
+                 |},
+                  togetherJson,
+                  apartJson,
+                ),
+              serverInfo,
+            )
+            |> Js.Promise.then_(v => {
+                 switch (v) {
+                 | Belt.Result.Ok(_) => self.send(SetFetchState(Loaded))
+                 | Belt.Result.Error(e) =>
+                   self.send(SetFetchState(Error(e)))
+                 };
+                 Js.Promise.resolve();
+               });
+
+          ();
         },
       )
     },
@@ -307,9 +398,9 @@ let make = _children => {
                           ->Belt.Array.map(gCol =>
                               <TableCell
                                 key={Printf.sprintf(
-                                  "%d-%d",
-                                  gRow.id,
-                                  gCol.id,
+                                  "%s-%s",
+                                  string_of_int(gRow.id),
+                                  string_of_int(gCol.id),
                                 )}>
                                 {if (gRow.id == gCol.id) {
                                    <IconButton disabled=true>
@@ -383,6 +474,16 @@ let make = _children => {
               )
             }
           />
+          <Button onClick={_e => self.send(Submit)}> {s("Submit")} </Button>
+          <Typography className={style([marginBottom(px(10))])}>
+            {switch (self.state.fetchState) {
+             | Waiting => s("waiting")
+             | Loading => s("loading")
+             | Error(e) =>
+               s(Format.asprintf("error: %a", Imandra_client.Error.pp, e))
+             | Loaded => s("loaded")
+             }}
+          </Typography>
         </Paper>
         <Paper className=paperStyles>
           <Typography variant=`H4 className=paperHeadingStyles>

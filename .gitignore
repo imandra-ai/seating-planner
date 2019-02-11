@@ -8,3 +8,4 @@ npm-debug.log
 _opam/
 dist/
 *.bs.js
+src/App_decoders.ml

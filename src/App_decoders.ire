@@ -1,7 +1,7 @@
 [@program];
 module D = Decoders;
 
-type pairList = list((int, int));
+type pairList = list((Z.t, Z.t));
 
 [@program];
 module Decode = (D: D.Decode.S) => {

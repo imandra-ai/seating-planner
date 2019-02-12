@@ -1,5 +1,3 @@
-type pairList = list((Z.t, Z.t));
-
 [@program]
 module D = Decoders;
 
@@ -7,7 +5,7 @@ module D = Decoders;
 module Decode = (D: D.Decode.S) => {
   open D;
 
-  let pairs: decoder(pairList) =
+  let zPairs: decoder(list((Z.t, Z.t))) =
     list(
       list(int)
       >>= (
@@ -22,10 +20,10 @@ module Decode = (D: D.Decode.S) => {
 module Encode = (E: D.Encode.S) => {
   open E;
 
-  let pairs: encoder(pairList) =
-    (xs: list((int, int))) =>
+  let intPairs: encoder(list((Caml.Int.t, Caml.Int.t))) =
+    (xs: list((Caml.Int.t, Caml.Int.t))) =>
       xs
-      |> list((x: (int, int)) =>
-           [fst(x), snd(x)] |> list(y => int(Z.to_int(y)))
+      |> list((x: (Caml.Int.t, Caml.Int.t)) =>
+           [fst(x), snd(x)] |> list(y => int(y))
          );
 };

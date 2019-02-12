@@ -7,13 +7,13 @@ let s = ReasonReact.string;
 
 module PairSet =
   Belt.Id.MakeComparable({
-    type t = (Z.t, Z.t);
+    type t = (int, int);
     let cmp = ((x, y): t, (x', y'): t) => {
-      let compare_fst = Z.compare(x, x');
+      let compare_fst = compare(x, x');
       if (compare_fst != 0) {
         compare_fst;
       } else {
-        Z.compare(y, y');
+        compare(y, y');
       };
     };
   });
@@ -41,8 +41,8 @@ type state = {
   guestText: string,
   constraintText: string,
   guests: array(guest),
-  shouldSitTogether: Belt.Set.t((Z.t, Z.t), PairSet.identity),
-  shouldSitApart: Belt.Set.t((Z.t, Z.t), PairSet.identity),
+  shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
+  shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
 };
 
 /* Action declaration */
@@ -81,7 +81,7 @@ Paul, World Music, y, y
 
 let initialConstraintText = {|let x = 3;;|};
 
-let normPair = ((a, b)) => (Z.of_int(min(a, b)), Z.of_int(max(a, b)));
+let normPair = ((a, b)) => (min(a, b), max(a, b));
 
 let areTogether = (s, pair) =>
   Belt.Set.has(s.shouldSitTogether, normPair(pair));
@@ -219,14 +219,13 @@ let make = _children => {
         self => {
           let togetherJson =
             Decoders_bs.Encode.encode_string(
-              E.pairs,
-              Belt.Set.toList(state.shouldSitTogether) /* ->Belt.List.map(((a, b)) => (Z.of_int(a), Z.of_int(b))) */,
+              E.intPairs,
+              Belt.Set.toList(state.shouldSitTogether),
             );
           let apartJson =
             Decoders_bs.Encode.encode_string(
-              E.pairs,
+              E.intPairs,
               Belt.Set.toList(state.shouldSitApart),
-              /* ->Belt.List.map(((a, b)) => (Z.of_int(a), Z.of_int(b))), */
             );
 
           self.send(SetFetchState(Loading));

@@ -9,3 +9,5 @@ module D = Decode(Decoders_yojson.Basic.Decode);
 
 [@program]
 module E = Encode(Decoders_yojson.Basic.Encode);
+
+type pairList = list((int, int));

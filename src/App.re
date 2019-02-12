@@ -30,7 +30,7 @@ type fetchState =
   | Waiting
   | Loading
   | Error(Imandra_client.Error.t)
-  | Loaded;
+  | Loaded(Imandra_client.Api.Response.instance_result);
 
 type state = {
   initState,
@@ -135,7 +135,25 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
     )
     |> Js.Promise.then_(v => {
          switch (v) {
-         | Belt.Result.Ok(_) => send(SetFetchState(Loaded))
+         | Belt.Result.Ok(_) =>
+           let _p =
+             Imandra_client.Instance.by_src(
+               ~instance_printer={
+                 name: "print_ze_instance",
+                 cx_var_name: "x",
+               },
+               ~syntax=Imandra_client.Api.Reason,
+               ~src="hello",
+               serverInfo,
+             )
+             |> Js.Promise.then_(v => {
+                  switch (v) {
+                  | Belt.Result.Ok(r) => send(SetFetchState(Loaded(r)))
+                  | Belt.Result.Error(e) => send(SetFetchState(Error(e)))
+                  };
+                  Js.Promise.resolve();
+                });
+           ();
          | Belt.Result.Error(e) => send(SetFetchState(Error(e)))
          };
          Js.Promise.resolve();
@@ -207,7 +225,7 @@ let make = _children => {
         _ =>
           switch (s) {
           | Loading => Js.Console.log(Printf.sprintf("Imandra: loading"))
-          | Loaded => Js.Console.log(Printf.sprintf("Imandra: loaded"))
+          | Loaded(_) => Js.Console.log(Printf.sprintf("Imandra: loaded"))
           | Error(e) =>
             Js.Console.error(
               Format.asprintf("Imandra: %a", Imandra_client.Error.pp, e),

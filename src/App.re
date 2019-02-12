@@ -237,10 +237,12 @@ let make = _children => {
               ~src=
                 Printf.sprintf(
                   {|
-                 [@program] let shouldSitTogether: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
-                 Imandra.port(~var="shouldSitTogether", "shouldSitTogether");
-                 [@program] let shouldSitApart: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
-                 Imandra.port(~var="shouldSitApart", "shouldSitApart");
+[@program]
+let shouldSitTogether: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
+Imandra.port(~var="shouldSitTogether", "shouldSitTogether");
+[@program]
+let shouldSitApart: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
+Imandra.port(~var="shouldSitApart", "shouldSitApart");
                  |},
                   togetherJson,
                   apartJson,

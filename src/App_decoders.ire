@@ -1,9 +1,9 @@
-[@program];
-module D = Decoders;
-
 type pairList = list((Z.t, Z.t));
 
-[@program];
+[@program]
+module D = Decoders;
+
+[@program]
 module Decode = (D: D.Decode.S) => {
   open D;
 
@@ -18,7 +18,7 @@ module Decode = (D: D.Decode.S) => {
     );
 };
 
-[@program];
+[@program]
 module Encode = (E: D.Encode.S) => {
   open E;
 

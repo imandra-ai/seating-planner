@@ -125,7 +125,7 @@ let make = _children => {
     let _p =
       Imandra_client.Eval.by_src(
         ~syntax=Imandra_client.Api.Reason,
-        ~src=Printf.sprintf("#use \"%s\"", setupScriptPath),
+        ~src=Printf.sprintf({|#use "%s";|}, setupScriptPath),
         serverInfo,
       )
       |> Js.Promise.then_(v => {
@@ -233,21 +233,14 @@ let make = _children => {
 
           let _p =
             Imandra_client.Eval.by_src(
-              ~syntax=Imandra_client.Api.OCaml,
+              ~syntax=Imandra_client.Api.Reason,
               ~src=
                 Printf.sprintf(
                   {|
-#redef true;;
-type pairList = (int * int) list;;
-#program;;
-let shouldSitTogether : pairList = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn;;
-Imandra.port ~var:"shouldSitTogether" "shouldSitTogether";;
-let shouldSitApart : pairList = Decoders_yojson.Basic.Decode.decode_string D.pairs "%s" |> CCResult.get_exn;;
-Imandra.port ~var:"shouldSitApart" "shouldSitApart";;
-#logic;;
-#show shouldSitTogether;;
-#show shouldSitApart;;
-
+                 [@program] let shouldSitTogether: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
+                 Imandra.port(~var="shouldSitTogether", "shouldSitTogether");
+                 [@program] let shouldSitApart: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
+                 Imandra.port(~var="shouldSitApart", "shouldSitApart");
                  |},
                   togetherJson,
                   apartJson,

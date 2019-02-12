@@ -39,7 +39,7 @@ type state = {
   initState,
   fetchState,
   guestText: string,
-  constraintText: string,
+  reqBuilderText: string,
   guests: array(guest),
   shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
   shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
@@ -49,7 +49,7 @@ type state = {
 type action =
   | GuestTextChanged(string)
   | TogglePairing(int, int)
-  | ConstraintTextChanged(string)
+  | ReqBuilderTextChanged(string)
   | SetInitState(initState)
   | SetFetchState(fetchState)
   | Submit;
@@ -79,7 +79,7 @@ Ringo, Rock 'n' Roll, y, y
 Paul, World Music, y, y
 |};
 
-let initialConstraintText = {|let x = 3;;|};
+let initialReqBuilder = {| |};
 
 let normPair = ((a, b)) => (min(a, b), max(a, b));
 
@@ -143,7 +143,7 @@ let make = _children => {
       initState: Loading,
       fetchState: Waiting,
       guestText: initialGuestText,
-      constraintText: initialConstraintText,
+      reqBuilderText: initialReqBuilder,
       guests: parseGuests(initialGuestText),
       shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
       shouldSitApart: Belt.Set.make(~id=(module PairSet)),
@@ -194,8 +194,8 @@ let make = _children => {
         guestText: text,
         guests: parseGuests(text),
       })
-    | ConstraintTextChanged(text) =>
-      ReasonReact.Update({...state, constraintText: text})
+    | ReqBuilderTextChanged(text) =>
+      ReasonReact.Update({...state, reqBuilderText: text})
     | TogglePairing(a, b) =>
       Js.Console.log(
         Printf.sprintf(
@@ -457,7 +457,7 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
             rows={`Int(20)}
             rowsMax={`Int(20)}
             placeholder="Enter your seating constraints"
-            defaultValue={`String(self.state.constraintText)}
+            defaultValue={`String(self.state.reqBuilderText)}
             className={style([
               fontFamily("monospace"),
               whiteSpace(`pre),
@@ -466,7 +466,7 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
             ])}
             onChange={e =>
               self.send(
-                ConstraintTextChanged(ReactEvent.Form.target(e)##value),
+                ReqBuilderTextChanged(ReactEvent.Form.target(e)##value),
               )
             }
           />

@@ -36,7 +36,6 @@ type state = {
   initState,
   fetchState,
   guestText: string,
-  reqBuilderText: string,
   guests: array(guest),
   shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
   shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
@@ -46,7 +45,6 @@ type state = {
 type action =
   | GuestTextChanged(string)
   | TogglePairing(int, int)
-  | ReqBuilderTextChanged(string)
   | SetInitState(initState)
   | SetFetchState(fetchState)
   | Submit;
@@ -67,7 +65,6 @@ let parseGuests = (s: string): array(guest) =>
 let component = ReasonReact.reducerComponent("Example");
 
 let initialGuestText = {|John, Paul, George, Ringo|};
-let initialReqBuilder = {| |};
 
 let normPair = ((a, b)) => (min(a, b), max(a, b));
 
@@ -131,7 +128,6 @@ let make = _children => {
       initState: Loading,
       fetchState: Waiting,
       guestText: initialGuestText,
-      reqBuilderText: initialReqBuilder,
       guests: parseGuests(initialGuestText),
       shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
       shouldSitApart: Belt.Set.make(~id=(module PairSet)),
@@ -182,8 +178,6 @@ let make = _children => {
         guestText: text,
         guests: parseGuests(text),
       })
-    | ReqBuilderTextChanged(text) =>
-      ReasonReact.Update({...state, reqBuilderText: text})
     | TogglePairing(a, b) =>
       Js.Console.log(
         Printf.sprintf(
@@ -396,39 +390,6 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
                )}
             </TableBody>
           </Table>
-        </Paper>
-        <Paper className=paperStyles>
-          <Typography variant=`H4 className=paperHeadingStyles>
-            {s("Your constraints")}
-          </Typography>
-          <TextField
-            multiline=true
-            rows={`Int(20)}
-            rowsMax={`Int(20)}
-            placeholder="Enter your seating constraints"
-            defaultValue={`String(self.state.reqBuilderText)}
-            className={style([
-              fontFamily("monospace"),
-              whiteSpace(`pre),
-              width(pct(80.)),
-              marginBottom(px(20)),
-            ])}
-            onChange={e =>
-              self.send(
-                ReqBuilderTextChanged(ReactEvent.Form.target(e)##value),
-              )
-            }
-          />
-          <Button onClick={_e => self.send(Submit)}> {s("Submit")} </Button>
-          <Typography className={style([marginBottom(px(10))])}>
-            {switch (self.state.fetchState) {
-             | Waiting => s("waiting")
-             | Loading => s("loading")
-             | Error(e) =>
-               s(Format.asprintf("error: %a", Imandra_client.Error.pp, e))
-             | Loaded => s("loaded")
-             }}
-          </Typography>
         </Paper>
         <Paper className=paperStyles>
           <Typography variant=`H4 className=paperHeadingStyles>

@@ -1,8 +1,6 @@
 /* State declaration */
 open Css;
 
-let traits = [|"Music Taste", "Met at college", "Met at work"|];
-
 let s = ReasonReact.string;
 
 module PairSet =
@@ -21,7 +19,6 @@ module PairSet =
 type guest = {
   id: int,
   name: string,
-  traits: array(string),
 };
 
 type initState =
@@ -55,30 +52,21 @@ type action =
   | Submit;
 
 let parseGuests = (s: string): array(guest) =>
-  Js.String.split("\n", s)
-  ->Belt.Array.mapWithIndex((id, g) => (id, g))
-  ->Belt.Array.keepMap(((id, g)) => {
-      let parts = Js.String.splitByRe([%re "/, ?/"], g);
-      Belt.Array.get(parts, 0)
-      ->Belt.Option.flatMap(name =>
-          if (String.trim(name) != "") {
-            Some({id, name, traits: Belt.Array.sliceToEnd(parts, 1)});
-          } else {
-            None;
-          }
-        );
-    });
+  Js.String.splitByRe([%re "/, ?/"], s)
+  ->Belt.Array.mapWithIndex((id, name) => {id, name})
+  ->Belt.Array.keepMap(g =>
+      if (String.trim(g.name) != "") {
+        Some(g);
+      } else {
+        None;
+      }
+    );
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
 let component = ReasonReact.reducerComponent("Example");
 
-let initialGuestText = {|Dave, Drum and Bass, y, y
-Matt, G-funk, y, y
-Ringo, Rock 'n' Roll, y, y
-Paul, World Music, y, y
-|};
-
+let initialGuestText = {|John, Paul, George, Ringo|};
 let initialReqBuilder = {| |};
 
 let normPair = ((a, b)) => (min(a, b), max(a, b));
@@ -280,29 +268,21 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
             {s("Guests")}
           </Typography>
           <Typography className={style([marginTop(px(10))])}>
-            {s(
-               "Enter your guests below, one per line. Seperate the traits by a comma, e.g:",
-             )}
-          </Typography>
-          <Typography
-            className={style([
-              marginBottom(px(10)),
-              fontFamily("monospace"),
-              whiteSpace(`pre),
-            ])}>
-            {s("Matt, Drum and Bass, y, y")}
+            {s("Enter the names of your guests below, seperated by a comma:")}
           </Typography>
           <TextField
             multiline=true
             rows={`Int(5)}
             rowsMax={`Int(10)}
-            placeholder="Enter guest details"
+            placeholder="Enter guest names"
             defaultValue={`String(self.state.guestText)}
             className={style([
               fontFamily("monospace"),
               whiteSpace(`pre),
               width(pct(80.)),
+              marginTop(px(20)),
               marginBottom(px(20)),
+              fontWeight(bold),
             ])}
             onChange={e =>
               self.send(GuestTextChanged(ReactEvent.Form.target(e)##value))
@@ -311,50 +291,19 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell> {s("ID")} </TableCell>
+                <TableCell className={style([width(px(20))])}>
+                  {s("ID")}
+                </TableCell>
                 <TableCell> {s("Name")} </TableCell>
-                {ReasonReact.array(
-                   Array.map(
-                     t => <TableCell key=t> {s(t)} </TableCell>,
-                     traits,
-                   ),
-                 )}
               </TableRow>
             </TableHead>
             <TableBody>
-              {let strTraitOrDash = (g, i) =>
-                 g.traits
-                 ->Belt.Array.get(i)
-                 ->Belt.Option.getWithDefault("-")
-                 ->s
-
-               let boolTraitOrDash = (g, i) =>
-                 g.traits
-                 ->Belt.Array.get(i)
-                 ->Belt.Option.map(
-                     fun
-                     | "yes"
-                     | "y"
-                     | "true" =>
-                       <MaterialUi_Icons icon=`Check fontSize=`Small />
-                     | "no"
-                     | "n"
-                     | "false" =>
-                       <MaterialUi_Icons icon=`Close fontSize=`Small />
-                     | _ =>
-                       <MaterialUi_Icons icon=`ErrorOutline fontSize=`Small />,
-                   )
-                 ->Belt.Option.getWithDefault(<div> {s("-")} </div>)
-
-               ReasonReact.array(
+              {ReasonReact.array(
                  Array.map(
                    g =>
                      <TableRow key={string_of_int(g.id)}>
                        <TableCell> {g.id} </TableCell>
                        <TableCell> {g.name} </TableCell>
-                       <TableCell> {strTraitOrDash(g, 0)} </TableCell>
-                       <TableCell> {boolTraitOrDash(g, 1)} </TableCell>
-                       <TableCell> {boolTraitOrDash(g, 2)} </TableCell>
                      </TableRow>,
                    self.state.guests,
                  ),

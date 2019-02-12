@@ -311,6 +311,7 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell> {s("ID")} </TableCell>
                 <TableCell> {s("Name")} </TableCell>
                 {ReasonReact.array(
                    Array.map(
@@ -349,6 +350,7 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
                  Array.map(
                    g =>
                      <TableRow key={string_of_int(g.id)}>
+                       <TableCell> {g.id} </TableCell>
                        <TableCell> {g.name} </TableCell>
                        <TableCell> {strTraitOrDash(g, 0)} </TableCell>
                        <TableCell> {boolTraitOrDash(g, 1)} </TableCell>

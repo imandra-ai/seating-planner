@@ -37,6 +37,7 @@ type state = {
   fetchState,
   guestText: string,
   guests: array(guest),
+  guestsPerTable: int,
   shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
   shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
 };
@@ -44,10 +45,10 @@ type state = {
 /* Action declaration */
 type action =
   | GuestTextChanged(string)
+  | GuestsPerTableChanged(int)
   | TogglePairing(int, int)
   | SetInitState(initState)
-  | SetFetchState(fetchState)
-  | Submit;
+  | SetFetchState(fetchState);
 
 let parseGuests = (s: string): array(guest) =>
   Js.String.splitByRe([%re "/, ?/"], s)
@@ -100,6 +101,48 @@ let setupScriptPath = "src/App_setup.ire";
 module D = App_decoders.Decode(Decoders_bs.Decode);
 module E = App_decoders.Encode(Decoders_bs.Encode);
 
+let sendToImandra = (state, send) => {
+  let togetherJson =
+    Decoders_bs.Encode.encode_string(
+      E.intPairs,
+      Belt.Set.toList(state.shouldSitTogether),
+    );
+  let apartJson =
+    Decoders_bs.Encode.encode_string(
+      E.intPairs,
+      Belt.Set.toList(state.shouldSitApart),
+    );
+
+  send(SetFetchState(Loading));
+
+  let _p =
+    Imandra_client.Eval.by_src(
+      ~syntax=Imandra_client.Api.Reason,
+      ~src=
+        Printf.sprintf(
+          {|
+[@program]
+let shouldSitTogether: pairList = Decoders_yojson.Basic.Decode.decode_string(D.zPairs, "%s") |> CCResult.get_exn;
+Imandra.port(~var="shouldSitTogether", "shouldSitTogether");
+[@program]
+let shouldSitApart: pairList = Decoders_yojson.Basic.Decode.decode_string(D.zPairs, "%s") |> CCResult.get_exn;
+Imandra.port(~var="shouldSitApart", "shouldSitApart");
+                 |},
+          togetherJson,
+          apartJson,
+        ),
+      serverInfo,
+    )
+    |> Js.Promise.then_(v => {
+         switch (v) {
+         | Belt.Result.Ok(_) => send(SetFetchState(Loaded))
+         | Belt.Result.Error(e) => send(SetFetchState(Error(e)))
+         };
+         Js.Promise.resolve();
+       });
+  ();
+};
+
 /* greeting and children are props. `children` isn't used, therefore ignored.
    We ignore it by prepending it with an underscore */
 let make = _children => {
@@ -128,6 +171,7 @@ let make = _children => {
       initState: Loading,
       fetchState: Waiting,
       guestText: initialGuestText,
+      guestsPerTable: 3,
       guests: parseGuests(initialGuestText),
       shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
       shouldSitApart: Belt.Set.make(~id=(module PairSet)),
@@ -173,20 +217,17 @@ let make = _children => {
       )
 
     | GuestTextChanged(text) =>
-      ReasonReact.Update({
-        ...state,
-        guestText: text,
-        guests: parseGuests(text),
-      })
+      ReasonReact.UpdateWithSideEffects(
+        {...state, guestText: text, guests: parseGuests(text)},
+        self => sendToImandra(self.state, self.send),
+      )
+    | GuestsPerTableChanged(c) =>
+      ReasonReact.UpdateWithSideEffects(
+        {...state, guestsPerTable: c},
+        self => sendToImandra(self.state, self.send),
+      )
     | TogglePairing(a, b) =>
-      Js.Console.log(
-        Printf.sprintf(
-          "toggled %s, %s",
-          string_of_int(a),
-          string_of_int(b),
-        ),
-      );
-      ReasonReact.Update(
+      ReasonReact.UpdateWithSideEffects(
         if (areTogether(state, (a, b))) {
           setApart(state, (a, b));
         } else if (areApart(state, (a, b))) {
@@ -194,53 +235,7 @@ let make = _children => {
         } else {
           setTogether(state, (a, b));
         },
-      );
-    | Submit =>
-      ReasonReact.UpdateWithSideEffects(
-        {...state, fetchState: Loading},
-        self => {
-          let togetherJson =
-            Decoders_bs.Encode.encode_string(
-              E.intPairs,
-              Belt.Set.toList(state.shouldSitTogether),
-            );
-          let apartJson =
-            Decoders_bs.Encode.encode_string(
-              E.intPairs,
-              Belt.Set.toList(state.shouldSitApart),
-            );
-
-          self.send(SetFetchState(Loading));
-
-          let _p =
-            Imandra_client.Eval.by_src(
-              ~syntax=Imandra_client.Api.Reason,
-              ~src=
-                Printf.sprintf(
-                  {|
-[@program]
-let shouldSitTogether: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
-Imandra.port(~var="shouldSitTogether", "shouldSitTogether");
-[@program]
-let shouldSitApart: pairList = Decoders_yojson.Basic.Decode.decode_string(D.pairs, "%s") |> CCResult.get_exn;
-Imandra.port(~var="shouldSitApart", "shouldSitApart");
-                 |},
-                  togetherJson,
-                  apartJson,
-                ),
-              serverInfo,
-            )
-            |> Js.Promise.then_(v => {
-                 switch (v) {
-                 | Belt.Result.Ok(_) => self.send(SetFetchState(Loaded))
-                 | Belt.Result.Error(e) =>
-                   self.send(SetFetchState(Error(e)))
-                 };
-                 Js.Promise.resolve();
-               });
-
-          ();
-        },
+        self => sendToImandra(self.state, self.send),
       )
     },
 
@@ -271,8 +266,6 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
             placeholder="Enter guest names"
             defaultValue={`String(self.state.guestText)}
             className={style([
-              fontFamily("monospace"),
-              whiteSpace(`pre),
               width(pct(80.)),
               marginTop(px(20)),
               marginBottom(px(20)),
@@ -282,7 +275,7 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
               self.send(GuestTextChanged(ReactEvent.Form.target(e)##value))
             }
           />
-          <Table>
+          <Table className={style([marginBottom(px(30))])}>
             <TableHead>
               <TableRow>
                 <TableCell className={style([width(px(20))])}>
@@ -304,6 +297,25 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
                )}
             </TableBody>
           </Table>
+          <Typography variant=`H5>
+            {s("Number of guests per table")}
+          </Typography>
+          <TextField
+            placeholder="Enter guest names"
+            defaultValue={`Int(self.state.guestsPerTable)}
+            type_="number"
+            className={style([
+              width(pct(80.)),
+              marginTop(px(20)),
+              marginBottom(px(20)),
+              fontWeight(bold),
+            ])}
+            onChange={e =>
+              self.send(
+                GuestsPerTableChanged(ReactEvent.Form.target(e)##value),
+              )
+            }
+          />
         </Paper>
         <Paper className=paperStyles>
           <Typography variant=`H4 className=paperHeadingStyles>

@@ -4,10 +4,6 @@ type pairList = (int * int) list
 
 type person = int
 
-type requirement =
-  | Sit_together of (person * person)
-  | Sit_apart of (person * person)
-
 type table = int
 
 type assignment = (person, table option) Map.t

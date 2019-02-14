@@ -11,8 +11,8 @@
     "dir" : "src",
     "subdirs" : true,
     "generators": [{
-      "name": "imandra-extract-re",
-      "edge": ["App_decoders.ml", ":", "App_decoders.ire"]
+      "name": "imandra-extract-ml",
+      "edge": ["App_decoders.ml", ":", "App_decoders.iml"]
     }]
   },
   "package-specs": [{

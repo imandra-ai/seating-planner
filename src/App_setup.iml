@@ -66,5 +66,4 @@ module E = Encode(Decoders_yojson.Basic.Encode) [@@program]
 let print_pairs (cx : assignment) =
   let pairs = pairs_from_cx cx in
   let s = Decoders_yojson.Basic.Encode.encode_string E.zPairs pairs in
-  let _ = print_endline s in
   s [@@program]

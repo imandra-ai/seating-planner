@@ -156,7 +156,7 @@ let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
          | Belt.Result.Ok(_) =>
            let _p =
              Imandra_client.Instance.by_src(
-               ~hints={method_: Ext_solver({name: "blast"})},
+               ~hints={method_: Unroll({steps: Some(300)})},
                ~instance_printer={
                  name: "print_pairs_for_total_guests",
                  cx_var_name: "x",

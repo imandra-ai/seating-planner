@@ -1,0 +1,21 @@
+module D = Decoders [@@program]
+
+module Decode (D : D.Decode.S) = struct
+  open D
+  let zPairs : (Z.t * Z.t) list decoder =
+    list (list int >>= (fun x ->
+        match x with
+        | y1::y2::[] -> succeed ((Z.of_int y1), (Z.of_int y2))
+        | _ -> fail "expected 2 elements for a pair"))
+
+end [@@program]
+
+module Encode (E : D.Encode.S) = struct
+  open E
+  let intPairs (xs : (Caml.Int.t * Caml.Int.t) list) : (Caml.Int.t * Caml.Int.t) list encoder =
+    list (fun x -> [fst x; snd x] |> list (fun y  -> int y))
+
+  let zPairs (xs : (Z.t * Z.t) list) : (Z.t * Z.t) list encoder =
+    list (fun x -> [fst x; snd x] |> list (fun y  -> int (Z.to_int y)))
+
+end [@@program]

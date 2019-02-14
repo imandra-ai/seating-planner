@@ -15,7 +15,7 @@
   "license": "MIT",
   "dependencies": {
     "bs-decoders": "https://github.com/mattjbray/ocaml-decoders.git#27deef2c5d32366950955ea96a2ada3ed12e6f5e",
-    "bs-imandra-client": "git+https://github.com/aestheticintegration/bs-imandra-client.git",
+    "bs-imandra-client": "git+https://github.com/aestheticintegration/bs-imandra-client.git#28765c4dda519fc6c31b869e6e51d259d544a251",
     "imandra-prelude": "git+https://github.com/aestheticintegration/imandra-prelude.git",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",

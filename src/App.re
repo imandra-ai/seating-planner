@@ -113,23 +113,29 @@ let sendToImandra = (state, send) => {
       Belt.Set.toList(state.shouldSitApart),
     );
 
+  let totalGuests = Array.length(state.guests);
+
   send(SetFetchState(Loading));
 
   let _p =
     Imandra_client.Eval.by_src(
-      ~syntax=Imandra_client.Api.Reason,
+      ~syntax=Imandra_client.Api.OCaml,
       ~src=
         Printf.sprintf(
           {|
-[@program]
-let shouldSitTogether: pairList = Decoders_yojson.Basic.Decode.decode_string(D.zPairs, "%s") |> CCResult.get_exn;
-Imandra.port(~var="shouldSitTogether", "shouldSitTogether");
-[@program]
-let shouldSitApart: pairList = Decoders_yojson.Basic.Decode.decode_string(D.zPairs, "%s") |> CCResult.get_exn;
-Imandra.port(~var="shouldSitApart", "shouldSitApart");
-                 |},
+let should_sit_together: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program]
+let _ = Imandra.port ~var:"shouldSitTogether" "shouldSitTogether"
+let should_sit_apart: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program]
+let _ = Imandra.port ~var:"shouldSitApart" "shouldSitApart"
+let total_guests = %d
+let max_guests_per_table = %d
+let number_of_tables = %d
+         |},
           togetherJson,
           apartJson,
+          totalGuests,
+          state.guestsPerTable,
+          8,
         ),
       serverInfo,
     )
@@ -138,12 +144,10 @@ Imandra.port(~var="shouldSitApart", "shouldSitApart");
          | Belt.Result.Ok(_) =>
            let _p =
              Imandra_client.Instance.by_src(
-               ~instance_printer={
-                 name: "print_ze_instance",
-                 cx_var_name: "x",
-               },
+               ~instance_printer={name: "print_pairs", cx_var_name: "x"},
                ~syntax=Imandra_client.Api.Reason,
-               ~src="hello",
+               ~src=
+                 "(fun x -> valid_assignment x should_sit_together should_sit_apart total_guests max_guests_per_table number_of_tables)",
                serverInfo,
              )
              |> Js.Promise.then_(v => {

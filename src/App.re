@@ -129,9 +129,9 @@ let sendToImandra = (state, send) => {
         Printf.sprintf(
           {|
 #redef true;;
-let should_sit_together: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program];;
+let should_sit_together: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%S") |> CCResult.get_exn [@@program];;
 let _ = Imandra.port ~var:"should_sit_together" "should_sit_together";;
-let should_sit_apart: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program];;
+let should_sit_apart: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%S") |> CCResult.get_exn [@@program];;
 let _ = Imandra.port ~var:"should_sit_apart" "should_sit_apart";;
 let total_guests = %d;;
 let max_guests_per_table = %d;;

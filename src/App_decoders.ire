@@ -26,4 +26,9 @@ module Encode = (E: D.Encode.S) => {
       |> list((x: (Caml.Int.t, Caml.Int.t)) =>
            [fst(x), snd(x)] |> list(y => int(y))
          );
+
+  let zPairs: encoder(list((Z.t, Z.t))) =
+    (xs: list((Z.t, Z.t))) =>
+      xs
+      |> list((x: (Z.t, Z.t)) => [fst(x), snd(x)] |> list(y => int(y)));
 };

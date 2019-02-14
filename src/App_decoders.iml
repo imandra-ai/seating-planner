@@ -12,10 +12,10 @@ end [@@program]
 
 module Encode (E : D.Encode.S) = struct
   open E
-  let intPairs (xs : (Caml.Int.t * Caml.Int.t) list) : (Caml.Int.t * Caml.Int.t) list encoder =
-    list (fun x -> [fst x; snd x] |> list (fun y  -> int y))
+  let intPairs : (Caml.Int.t * Caml.Int.t) list encoder = fun xs ->
+    xs |> list (fun x -> [fst x; snd x] |> list (fun y  -> int y))
 
-  let zPairs (xs : (Z.t * Z.t) list) : (Z.t * Z.t) list encoder =
-    list (fun x -> [fst x; snd x] |> list (fun y  -> int (Z.to_int y)))
+  let zPairs : (Z.t * Z.t) list encoder = fun xs ->
+    xs |> list (fun x -> [fst x; snd x] |> list (fun y  -> int (Z.to_int y)))
 
 end [@@program]

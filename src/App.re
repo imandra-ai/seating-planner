@@ -38,6 +38,7 @@ type state = {
   guestText: string,
   guests: array(guest),
   guestsPerTable: int,
+  numberOfTables: int,
   shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
   shouldSitApart: Belt.Set.t((int, int), PairSet.identity),
 };
@@ -46,6 +47,7 @@ type state = {
 type action =
   | GuestTextChanged(string)
   | GuestsPerTableChanged(int)
+  | NumberOfTablesChanged(int)
   | TogglePairing(int, int)
   | SetInitState(initState)
   | SetFetchState(fetchState);
@@ -96,7 +98,7 @@ let paperStyles = style([padding(px(20)), marginTop(px(20))]);
 let paperHeadingStyles = style([marginBottom(px(20))]);
 
 let serverInfo: Imandra_client.Server_info.t = {url: "http://localhost:3000"};
-let setupScriptPath = "src/App_setup.ire";
+let setupScriptPath = "src/App_setup.iml";
 
 module D = App_decoders.Decode(Decoders_bs.Decode);
 module E = App_decoders.Encode(Decoders_bs.Encode);
@@ -123,19 +125,26 @@ let sendToImandra = (state, send) => {
       ~src=
         Printf.sprintf(
           {|
-let should_sit_together: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program]
-let _ = Imandra.port ~var:"shouldSitTogether" "shouldSitTogether"
-let should_sit_apart: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program]
-let _ = Imandra.port ~var:"shouldSitApart" "shouldSitApart"
-let total_guests = %d
-let max_guests_per_table = %d
-let number_of_tables = %d
+#redef true;;
+let should_sit_together: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program];;
+let _ = Imandra.port ~var:"should_sit_together" "should_sit_together";;
+let should_sit_apart: pairList = (Decoders_yojson.Basic.Decode.decode_string D.zPairs "%s") |> CCResult.get_exn [@@program];;
+let _ = Imandra.port ~var:"should_sit_apart" "should_sit_apart";;
+let total_guests = %d;;
+let max_guests_per_table = %d;;
+let number_of_tables = %d;;
+print_endline "hellO" [@@program];;
+print_endline ("let should_sit_together = [" ^ CCString.concat "; " (should_sit_together |> CCList.map (fun (a, b) -> "(" ^ Z.to_string(a) ^ "," ^ Z.to_string(b) ^ ")" )) ^ "]") [@@program];;
+print_endline ("let should_sit_apart = [" ^ CCString.concat "; " (should_sit_apart |> CCList.map (fun (a, b) -> "(" ^ Z.to_string(a) ^ "," ^ Z.to_string(b) ^ ")" )) ^ "]") [@@program];;
+print_endline ("let total_guests = " ^ Z.to_string(total_guests)) [@@program];;
+print_endline ("let max_guests_per_table = " ^ Z.to_string(max_guests_per_table)) [@@program];;
+print_endline ("let number_of_tables = " ^ Z.to_string(number_of_tables)) [@@program];;
          |},
           togetherJson,
           apartJson,
           totalGuests,
           state.guestsPerTable,
-          8,
+          state.numberOfTables,
         ),
       serverInfo,
     )
@@ -145,7 +154,7 @@ let number_of_tables = %d
            let _p =
              Imandra_client.Instance.by_src(
                ~instance_printer={name: "print_pairs", cx_var_name: "x"},
-               ~syntax=Imandra_client.Api.Reason,
+               ~syntax=Imandra_client.Api.OCaml,
                ~src=
                  "(fun x -> valid_assignment x should_sit_together should_sit_apart total_guests max_guests_per_table number_of_tables)",
                serverInfo,
@@ -174,8 +183,8 @@ let make = _children => {
   didMount: self => {
     let _p =
       Imandra_client.Eval.by_src(
-        ~syntax=Imandra_client.Api.Reason,
-        ~src=Printf.sprintf({|#use "%s";|}, setupScriptPath),
+        ~syntax=Imandra_client.Api.OCaml,
+        ~src=Printf.sprintf({|#use "%s"|}, setupScriptPath),
         serverInfo,
       )
       |> Js.Promise.then_(v => {
@@ -194,6 +203,7 @@ let make = _children => {
       fetchState: Waiting,
       guestText: initialGuestText,
       guestsPerTable: 3,
+      numberOfTables: 2,
       guests: parseGuests(initialGuestText),
       shouldSitTogether: Belt.Set.make(~id=(module PairSet)),
       shouldSitApart: Belt.Set.make(~id=(module PairSet)),
@@ -229,7 +239,16 @@ let make = _children => {
         _ =>
           switch (s) {
           | Loading => Js.Console.log(Printf.sprintf("Imandra: loading"))
-          | Loaded(_) => Js.Console.log(Printf.sprintf("Imandra: loaded"))
+          | Loaded(instance) =>
+            Js.Console.log(Printf.sprintf("Imandra: loaded"));
+            switch (instance) {
+            | I_sat(i) =>
+              switch (i.instance.printed) {
+              | None => Js.Console.log("No instance?")
+              | Some(p) => Js.Console.log(p)
+              }
+            | _ => Js.Console.log("Instance not sat")
+            };
           | Error(e) =>
             Js.Console.error(
               Format.asprintf("Imandra: %a", Imandra_client.Error.pp, e),
@@ -246,6 +265,11 @@ let make = _children => {
     | GuestsPerTableChanged(c) =>
       ReasonReact.UpdateWithSideEffects(
         {...state, guestsPerTable: c},
+        self => sendToImandra(self.state, self.send),
+      )
+    | NumberOfTablesChanged(c) =>
+      ReasonReact.UpdateWithSideEffects(
+        {...state, numberOfTables: c},
         self => sendToImandra(self.state, self.send),
       )
     | TogglePairing(a, b) =>
@@ -323,7 +347,7 @@ let make = _children => {
             {s("Number of guests per table")}
           </Typography>
           <TextField
-            placeholder="Enter guest names"
+            placeholder="Enter number of guests per table"
             defaultValue={`Int(self.state.guestsPerTable)}
             type_="number"
             className={style([
@@ -335,6 +359,23 @@ let make = _children => {
             onChange={e =>
               self.send(
                 GuestsPerTableChanged(ReactEvent.Form.target(e)##value),
+              )
+            }
+          />
+          <Typography variant=`H5> {s("Number of tables")} </Typography>
+          <TextField
+            placeholder="Enter number of tables"
+            defaultValue={`Int(self.state.numberOfTables)}
+            type_="number"
+            className={style([
+              width(pct(80.)),
+              marginTop(px(20)),
+              marginBottom(px(20)),
+              fontWeight(bold),
+            ])}
+            onChange={e =>
+              self.send(
+                NumberOfTablesChanged(ReactEvent.Form.target(e)##value),
               )
             }
           />

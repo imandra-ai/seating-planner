@@ -133,7 +133,6 @@ let _ = Imandra.port ~var:"should_sit_apart" "should_sit_apart";;
 let total_guests = %d;;
 let max_guests_per_table = %d;;
 let number_of_tables = %d;;
-print_endline "hellO" [@@program];;
 print_endline ("let should_sit_together = [" ^ CCString.concat "; " (should_sit_together |> CCList.map (fun (a, b) -> "(" ^ Z.to_string(a) ^ "," ^ Z.to_string(b) ^ ")" )) ^ "]") [@@program];;
 print_endline ("let should_sit_apart = [" ^ CCString.concat "; " (should_sit_apart |> CCList.map (fun (a, b) -> "(" ^ Z.to_string(a) ^ "," ^ Z.to_string(b) ^ ")" )) ^ "]") [@@program];;
 print_endline ("let total_guests = " ^ Z.to_string(total_guests)) [@@program];;

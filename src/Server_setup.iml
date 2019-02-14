@@ -9,11 +9,11 @@ type table = int
 type assignment = (person, table option) Map.t
 
 (* Example values. When running these are dynamically bound via an eval call from the UI *)
-(* let should_sit_together = []
- * let should_sit_apart = [(1, 3);(0, 1); (1, 2)]
- * let total_guests = 4
- * let max_guests_per_table = 3
- * let number_of_tables = 3 *)
+let should_sit_together = []
+let should_sit_apart = [(1, 3);(0, 1); (1, 2)]
+let total_guests = 4
+let max_guests_per_table = 2
+let number_of_tables = 1
 
 let table_total (a : assignment) (t : table) (total_guests : int) =
   List.length
@@ -52,7 +52,7 @@ let pairs_from_cx total_guests cx =
 
 [@@@require "decoders-yojson"]
 
-[@@@use "src/App_decoders.iml"]
+[@@@use "src/Server_decoders.iml"]
 
 module D = Decode(Decoders_yojson.Basic.Decode) [@@program]
 module E = Encode(Decoders_yojson.Basic.Encode) [@@program]

@@ -101,7 +101,7 @@ let paperStyles = style([padding(px(20)), marginTop(px(20))]);
 let paperHeadingStyles = style([marginBottom(px(20))]);
 
 let serverInfo: Imandra_client.Server_info.t = {url: "http://localhost:3000"};
-let setupScriptPath = "src/App_setup.iml";
+let setupScriptPath = "src/Server_setup.iml";
 
 module D = App_decoders.Decode(Decoders_bs.Decode);
 module E = App_decoders.Encode(Decoders_bs.Encode);

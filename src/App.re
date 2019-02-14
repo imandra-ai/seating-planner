@@ -3,6 +3,8 @@ open Css;
 
 let s = ReasonReact.string;
 
+[@bs.module] external forceGraph: (string, Js.Json.t) => unit = "./forceGraph";
+
 module PairSet =
   Belt.Id.MakeComparable({
     type t = (int, int);
@@ -29,8 +31,9 @@ type initState =
 type fetchState =
   | Waiting
   | Loading
-  | Error(Imandra_client.Error.t)
-  | Loaded(Imandra_client.Api.Response.instance_result);
+  | Error(string)
+  | FoundInstance(list((int, int)))
+  | NoInstance;
 
 type state = {
   initState,
@@ -65,7 +68,7 @@ let parseGuests = (s: string): array(guest) =>
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
-let component = ReasonReact.reducerComponent("Example");
+let component = ReasonReact.reducerComponent("App");
 
 let initialGuestText = {|John, Paul, George, Ringo|};
 
@@ -138,6 +141,7 @@ print_endline ("let should_sit_apart = [" ^ CCString.concat "; " (should_sit_apa
 print_endline ("let total_guests = " ^ Z.to_string(total_guests)) [@@program];;
 print_endline ("let max_guests_per_table = " ^ Z.to_string(max_guests_per_table)) [@@program];;
 print_endline ("let number_of_tables = " ^ Z.to_string(number_of_tables)) [@@program];;
+let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
          |},
           togetherJson,
           apartJson,
@@ -152,7 +156,11 @@ print_endline ("let number_of_tables = " ^ Z.to_string(number_of_tables)) [@@pro
          | Belt.Result.Ok(_) =>
            let _p =
              Imandra_client.Instance.by_src(
-               ~instance_printer={name: "print_pairs", cx_var_name: "x"},
+               ~hints={method_: Ext_solver({name: "blast"})},
+               ~instance_printer={
+                 name: "print_pairs_for_total_guests",
+                 cx_var_name: "x",
+               },
                ~syntax=Imandra_client.Api.OCaml,
                ~src=
                  "(fun x -> valid_assignment x should_sit_together should_sit_apart total_guests max_guests_per_table number_of_tables)",
@@ -160,13 +168,44 @@ print_endline ("let number_of_tables = " ^ Z.to_string(number_of_tables)) [@@pro
              )
              |> Js.Promise.then_(v => {
                   switch (v) {
-                  | Belt.Result.Ok(r) => send(SetFetchState(Loaded(r)))
-                  | Belt.Result.Error(e) => send(SetFetchState(Error(e)))
+                  | Belt.Result.Ok(Imandra_client.Api.Response.I_sat(i)) =>
+                    switch (i.instance.printed) {
+                    | None =>
+                      send(
+                        SetFetchState(
+                          Error("Instance found, but not printed"),
+                        ),
+                      )
+                    | Some(p) =>
+                      switch (Decoders_bs.Decode.decode_string(D.intPairs, p)) {
+                      | Ok(pairs) =>
+                        send(SetFetchState(FoundInstance(pairs)))
+                      | Error(e) =>
+                        send(
+                          SetFetchState(
+                            Error(
+                              Format.asprintf(
+                                "%a",
+                                Decoders_bs.Decode.pp_error,
+                                e,
+                              ),
+                            ),
+                          ),
+                        )
+                      }
+                    }
+
+                  | Belt.Result.Ok(_) => send(SetFetchState(NoInstance))
+                  | Belt.Result.Error(e) =>
+                    send(
+                      SetFetchState(Error(Imandra_client.Error.pp_str(e))),
+                    )
                   };
                   Js.Promise.resolve();
                 });
            ();
-         | Belt.Result.Error(e) => send(SetFetchState(Error(e)))
+         | Belt.Result.Error(e) =>
+           send(SetFetchState(Error(Imandra_client.Error.pp_str(e))))
          };
          Js.Promise.resolve();
        });
@@ -193,6 +232,7 @@ let make = _children => {
            };
            Js.Promise.resolve();
          });
+    sendToImandra(self.state, self.send);
     ();
   },
 
@@ -238,20 +278,15 @@ let make = _children => {
         _ =>
           switch (s) {
           | Loading => Js.Console.log(Printf.sprintf("Imandra: loading"))
-          | Loaded(instance) =>
-            Js.Console.log(Printf.sprintf("Imandra: loaded"));
-            switch (instance) {
-            | I_sat(i) =>
-              switch (i.instance.printed) {
-              | None => Js.Console.log("No instance?")
-              | Some(p) => Js.Console.log(p)
-              }
-            | _ => Js.Console.log("Instance not sat")
-            };
-          | Error(e) =>
-            Js.Console.error(
-              Format.asprintf("Imandra: %a", Imandra_client.Error.pp, e),
-            )
+          | NoInstance => Js.Console.log(Printf.sprintf("No instance"))
+          | FoundInstance(pairs) =>
+            Js.Console.log(Printf.sprintf("Imandra: found instance"));
+            forceGraph(
+              "#seats",
+              Decoders_bs.Encode.encode_value(E.graphOfPairs, pairs),
+            );
+
+          | Error(e) => Js.Console.error(e)
           | _ => ()
           },
       )
@@ -469,7 +504,20 @@ let make = _children => {
           <Typography variant=`H4 className=paperHeadingStyles>
             {s("The seating arrangement")}
           </Typography>
-          <svg id="seats" width="900" height="500" />
+          {switch (self.state.fetchState) {
+           | NoInstance =>
+             <Typography
+               className={style([
+                 width(px(900)),
+                 height(px(500)),
+                 marginTop(px(5)),
+                 textAlign(center),
+                 paddingTop(px(200)),
+               ])}>
+               {s("No workable arrangement found")}
+             </Typography>
+           | _ => <svg id="seats" width="900" height="500" />
+           }}
         </Paper>
       </main>
     ),

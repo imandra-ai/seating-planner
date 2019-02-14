@@ -1,9 +1,11 @@
 var d3 = require('d3');
 
-module.exports = function (selector) {
+module.exports = function (selector, graph) {
     var svg = d3.select(selector),
         width = +svg.attr("width"),
         height = +svg.attr("height");
+
+    svg.selectAll("*").remove();
 
     var color = d3.scaleOrdinal(d3.schemeCategory20);
 
@@ -11,8 +13,6 @@ module.exports = function (selector) {
         .force("link", d3.forceLink().id(function(d) { return d.id; }))
         .force("charge", d3.forceManyBody())
         .force("center", d3.forceCenter(width / 2, height / 2));
-
-    var graph = require('./testData');
 
     var link = svg.append("g")
         .attr("class", "links")

@@ -43,16 +43,14 @@ let valid_assignment (a : assignment) (should_sit_together : pairList) (should_s
 
 (* instance (fun x -> valid_assignment x should_sit_together should_sit_apart total_guests max_guests_per_table number_of_tables) *)
 
-let pairs_from_cx cx =
+let pairs_from_cx total_guests cx =
   let (definite, default) = Map.extract cx in
-  let res = (0 -- total_guests) |> CCList.map (fun p ->
+  (0 -- total_guests) |> CCList.map (fun p ->
       let found = definite |> CCList.find_opt (fun (p', t) -> p = p') in
       match found with
       | Some (p, t) -> (p, t)
       | None -> (p, default)
-    ) |> CCList.map (fun (p, t) -> (p, CCOpt.get_exn t)) in
-  let _ = print_endline "res" in
-  res
+    ) |> CCList.map (fun (p, t) -> (p, CCOpt.get_exn t))
 [@@program]
 
 
@@ -63,7 +61,7 @@ let pairs_from_cx cx =
 module D = Decode(Decoders_yojson.Basic.Decode) [@@program]
 module E = Encode(Decoders_yojson.Basic.Encode) [@@program]
 
-let print_pairs (cx : assignment) =
-  let pairs = pairs_from_cx cx in
+let print_pairs total_guests (cx : assignment) =
+  let pairs = pairs_from_cx total_guests cx in
   let s = Decoders_yojson.Basic.Encode.encode_string E.zPairs pairs in
   s [@@program]

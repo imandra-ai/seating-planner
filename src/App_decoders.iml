@@ -8,6 +8,12 @@ module Decode (D : D.Decode.S) = struct
         | y1::y2::[] -> succeed ((Z.of_int y1), (Z.of_int y2))
         | _ -> fail "expected 2 elements for a pair"))
 
+  let intPairs : (Caml.Int.t * Caml.Int.t) list decoder =
+    list (list int >>= (fun x ->
+        match x with
+        | y1::y2::[] -> succeed (y1, y2)
+        | _ -> fail "expected 2 elements for a pair"))
+
 end [@@program]
 
 module Encode (E : D.Encode.S) = struct
@@ -17,5 +23,40 @@ module Encode (E : D.Encode.S) = struct
 
   let zPairs : (Z.t * Z.t) list encoder = fun xs ->
     xs |> list (fun x -> [fst x; snd x] |> list (fun y  -> int (Z.to_int y)))
+
+  let personNodeOfPair : (Caml.Int.t * Caml.Int.t) encoder = fun (p, t) ->
+    obj [("id", string (Printf.sprintf "person-%d" p))
+        ;("group", int t)]
+
+  let tableNodeOfPair : Caml.Int.t encoder = fun t ->
+    obj [("id", string (Printf.sprintf "table-%d" t))
+        ;("group", int t)]
+
+  let personLinkOfPair : (Caml.Int.t * Caml.Int.t) encoder = fun (p, t) ->
+    obj [("source", string (Printf.sprintf "table-%d" t))
+        ;("target", string (Printf.sprintf "person-%d" p))
+        ;("value", int (Z.to_int 5))]
+
+  type personOrTable =
+    | Person of (Caml.Int.t * Caml.Int.t)
+    | Table of Caml.Int.t
+
+  let nodeOfPersonOrTablePair : personOrTable encoder = function
+    | Person p -> personNodeOfPair p
+    | Table t -> tableNodeOfPair t
+
+  let graphOfPairs : (Caml.Int.t * Caml.Int.t) list encoder = fun xs ->
+    let persons =
+      xs
+      |> CCList.map (fun x -> Person x)
+    in
+    let tables =
+      xs
+      |> CCList.map (fun (p,t) -> t)
+      |> CCList.uniq ~eq:Caml.(=)
+      |> CCList.map (fun t -> Table t)
+    in
+    obj [("nodes", list nodeOfPersonOrTablePair (persons @ tables))
+        ;("links", (list personLinkOfPair xs))]
 
 end [@@program]

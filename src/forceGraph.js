@@ -28,7 +28,7 @@ module.exports = function (selector, graph) {
         .enter().append("g");
 
     var circles = node.append("circle")
-        .attr("r", 5)
+        .attr("r", function(d) { if (d.type == 'table') { return 15; } else { return 5; } })
         .attr("fill", function(d) { return color(d.group); })
         .call(d3.drag()
               .on("start", dragstarted)

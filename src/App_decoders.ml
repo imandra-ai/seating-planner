@@ -20,10 +20,12 @@ module Encode (E : D.Encode.S) = struct
 
   let person_node : assignment encoder = fun x ->
     obj [("id", string x.guest.name)
+        ;("type", string "person")
         ;("group", int x.table)]
 
   let table_node : int encoder = fun t ->
     obj [("id", string (Printf.sprintf "Table %d" t))
+        ;("type", string "table")
         ;("group", int t)]
 
   let person_link : assignment encoder = fun x ->

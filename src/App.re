@@ -1,5 +1,6 @@
 /* State declaration */
 open Css;
+open App_types;
 
 let s = ReasonReact.string;
 
@@ -18,11 +19,6 @@ module PairSet =
     };
   });
 
-type guest = {
-  id: int,
-  name: string,
-};
-
 type initState =
   | Loading
   | Error(Imandra_client.Error.t)
@@ -32,14 +28,14 @@ type fetchState =
   | Waiting
   | Loading
   | Error(string)
-  | FoundInstance(list((int, int)))
+  | FoundInstance(list(assignment))
   | NoInstance;
 
 type state = {
   initState,
   fetchState,
   guestText: string,
-  guests: array(guest),
+  guests: list(guest),
   guestsPerTable: int,
   numberOfTables: int,
   shouldSitTogether: Belt.Set.t((int, int), PairSet.identity),
@@ -55,7 +51,7 @@ type action =
   | SetInitState(initState)
   | SetFetchState(fetchState);
 
-let parseGuests = (s: string): array(guest) =>
+let parseGuests = (s: string): list(guest) =>
   Js.String.splitByRe([%re "/, ?/"], s)
   ->Belt.Array.mapWithIndex((id, name) => {id, name})
   ->Belt.Array.keepMap(g =>
@@ -64,7 +60,8 @@ let parseGuests = (s: string): array(guest) =>
       } else {
         None;
       }
-    );
+    )
+  ->Array.to_list;
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
@@ -118,7 +115,7 @@ let sendToImandra = (state, send) => {
       Belt.Set.toList(state.shouldSitApart),
     );
 
-  let totalGuests = Array.length(state.guests);
+  let totalGuests = List.length(state.guests);
 
   send(SetFetchState(Loading));
 
@@ -179,7 +176,18 @@ let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
                     | Some(p) =>
                       switch (Decoders_bs.Decode.decode_string(D.intPairs, p)) {
                       | Ok(pairs) =>
-                        send(SetFetchState(FoundInstance(pairs)))
+                        send(
+                          SetFetchState(
+                            FoundInstance(
+                              pairs->Belt.List.map(((p, t)) => {
+                                let guest =
+                                  state.guests
+                                  |> List.find((g: guest) => g.id == p);
+                                {guest, table: t};
+                              }),
+                            ),
+                          ),
+                        )
                       | Error(e) =>
                         send(
                           SetFetchState(
@@ -279,11 +287,14 @@ let make = _children => {
           switch (s) {
           | Loading => Js.Console.log(Printf.sprintf("Imandra: loading"))
           | NoInstance => Js.Console.log(Printf.sprintf("No instance"))
-          | FoundInstance(pairs) =>
+          | FoundInstance(assignments) =>
             Js.Console.log(Printf.sprintf("Imandra: found instance"));
             forceGraph(
               "#seats",
-              Decoders_bs.Encode.encode_value(E.graphOfPairs, pairs),
+              Decoders_bs.Encode.encode_value(
+                E.graph_of_assignments,
+                assignments,
+              ),
             );
 
           | Error(e) => Js.Console.error(e)
@@ -366,14 +377,14 @@ let make = _children => {
             </TableHead>
             <TableBody>
               {ReasonReact.array(
-                 Array.map(
-                   g =>
+                 self.state.guests
+                 ->Belt.List.map(g =>
                      <TableRow key={string_of_int(g.id)}>
                        <TableCell> {g.id} </TableCell>
                        <TableCell> {g.name} </TableCell>
-                     </TableRow>,
-                   self.state.guests,
-                 ),
+                     </TableRow>
+                   )
+                 ->Array.of_list,
                )}
             </TableBody>
           </Table>
@@ -423,27 +434,27 @@ let make = _children => {
               <TableRow>
                 <TableCell> {s("Guest")} </TableCell>
                 {ReasonReact.array(
-                   Array.map(
-                     g =>
+                   self.state.guests
+                   ->Belt.List.map(g =>
                        <TableCell key={string_of_int({g.id})}>
                          <div className={style([paddingLeft(px(8))])}>
                            {s(g.name)}
                          </div>
-                       </TableCell>,
-                     self.state.guests,
-                   ),
+                       </TableCell>
+                     )
+                   ->Array.of_list,
                  )}
               </TableRow>
             </TableHead>
             <TableBody>
               {ReasonReact.array(
                  self.state.guests
-                 ->Belt.Array.map(gRow =>
+                 ->Belt.List.map(gRow =>
                      <TableRow key={string_of_int({gRow.id})}>
                        <TableCell> {gRow.name} </TableCell>
                        {ReasonReact.array(
                           self.state.guests
-                          ->Belt.Array.map(gCol =>
+                          ->Belt.List.map(gCol =>
                               <TableCell
                                 key={Printf.sprintf(
                                   "%s-%s",
@@ -492,10 +503,12 @@ let make = _children => {
                                    </IconButton>;
                                  }}
                               </TableCell>
-                            ),
+                            )
+                          ->Array.of_list,
                         )}
                      </TableRow>
-                   ),
+                   )
+                 ->Array.of_list,
                )}
             </TableBody>
           </Table>

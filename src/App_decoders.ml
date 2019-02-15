@@ -31,7 +31,6 @@ module Encode (E : D.Encode.S) = struct
   let person_link : assignment encoder = fun x ->
     obj [("source", string (Printf.sprintf "Table %d" x.table))
         ;("target", string x.guest.name)
-        ;("value", int 5)
         ]
 
   type person_or_table =

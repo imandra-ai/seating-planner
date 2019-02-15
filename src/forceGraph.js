@@ -35,7 +35,7 @@ module.exports = function (selector, graph) {
               .on("drag", dragged)
               .on("end", dragended));
 
-    var lables = node.append("text")
+    var labels = node.append("text")
         .text(function(d) {
             return d.id;
         })

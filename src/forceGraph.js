@@ -24,6 +24,7 @@ function nodesChanged(graph) {
 }
 
 module.exports = function (selector, graph) {
+    // https://bl.ocks.org/colbenkharrl/21b3808492b93a21de841bc5ceac4e47#file-preview-png
     console.log(graph);
 
     var svg = d3.select(selector),

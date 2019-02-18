@@ -24,16 +24,19 @@ type initState =
   | Error(Imandra_client.Error.t)
   | Loaded;
 
+type reqId = int;
+
 type fetchState =
   | Waiting
-  | Loading
-  | Error(string)
-  | FoundInstance(list(assignment))
-  | NoInstance;
+  | Loading(reqId)
+  | Error(reqId, string)
+  | FoundInstance(reqId, list(assignment))
+  | NoInstance(reqId);
 
 type state = {
   initState,
   fetchState,
+  lastReqId: reqId,
   guestText: string,
   guests: list(guest),
   guestsPerTable: int,
@@ -104,6 +107,8 @@ module D = App_decoders.Decode(Decoders_bs.Decode);
 module E = App_decoders.Encode(Decoders_bs.Encode);
 
 let sendToImandra = (state, send) => {
+  Js.Console.log(state.lastReqId);
+
   let togetherJson =
     Decoders_bs.Encode.encode_string(
       E.intPairs,
@@ -117,7 +122,11 @@ let sendToImandra = (state, send) => {
 
   let totalGuests = List.length(state.guests);
 
-  send(SetFetchState(Loading));
+  let reqId = state.lastReqId + 1;
+
+  Js.Console.log(reqId);
+
+  send(SetFetchState(Loading(reqId)));
 
   let _p =
     Imandra_client.Eval.by_src(
@@ -170,7 +179,7 @@ let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
                     | None =>
                       send(
                         SetFetchState(
-                          Error("Instance found, but not printed"),
+                          Error(reqId, "Instance found, but not printed"),
                         ),
                       )
                     | Some(p) =>
@@ -179,6 +188,7 @@ let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
                         send(
                           SetFetchState(
                             FoundInstance(
+                              reqId,
                               pairs->Belt.List.map(((p, t)) => {
                                 let guest =
                                   state.guests
@@ -192,6 +202,7 @@ let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
                         send(
                           SetFetchState(
                             Error(
+                              reqId,
                               Format.asprintf(
                                 "%a",
                                 Decoders_bs.Decode.pp_error,
@@ -203,17 +214,22 @@ let print_pairs_for_total_guests = print_pairs total_guests [@@program];;
                       }
                     }
 
-                  | Belt.Result.Ok(_) => send(SetFetchState(NoInstance))
+                  | Belt.Result.Ok(_) =>
+                    send(SetFetchState(NoInstance(reqId)))
                   | Belt.Result.Error(e) =>
                     send(
-                      SetFetchState(Error(Imandra_client.Error.pp_str(e))),
+                      SetFetchState(
+                        Error(reqId, Imandra_client.Error.pp_str(e)),
+                      ),
                     )
                   };
                   Js.Promise.resolve();
                 });
            ();
          | Belt.Result.Error(e) =>
-           send(SetFetchState(Error(Imandra_client.Error.pp_str(e))))
+           send(
+             SetFetchState(Error(reqId, Imandra_client.Error.pp_str(e))),
+           )
          };
          Js.Promise.resolve();
        });
@@ -247,6 +263,7 @@ let make = _children => {
   initialState: () =>
     {
       initState: Loading,
+      lastReqId: 0,
       fetchState: Waiting,
       guestText: initialGuestText,
       guestsPerTable: 3,
@@ -282,13 +299,38 @@ let make = _children => {
       )
     | SetFetchState(s) =>
       ReasonReact.UpdateWithSideEffects(
-        {...state, fetchState: s},
-        _ =>
+        switch (state.fetchState, s) {
+        | (_, Loading(id)) => {...state, lastReqId: id, fetchState: s}
+        | (Loading(a), Error(b, _)) when a == b => {...state, fetchState: s}
+        | (Loading(a), FoundInstance(b, _)) when a == b => {
+            ...state,
+            fetchState: s,
+          }
+        | (Loading(a), NoInstance(b)) when a == b => {
+            ...state,
+            fetchState: s,
+          }
+        | _ => state
+        },
+        self => {
           switch (s) {
-          | Loading => Js.Console.log(Printf.sprintf("Imandra: loading"))
-          | NoInstance => Js.Console.log(Printf.sprintf("No instance"))
-          | FoundInstance(assignments) =>
-            Js.Console.log(Printf.sprintf("Imandra: found instance"));
+          | Loading(id) =>
+            Js.Console.log(Printf.sprintf("Imandra[%d]: loading", id))
+          | NoInstance(id) =>
+            Js.Console.log(Printf.sprintf("Imandra[%d]: No instance", id))
+          | FoundInstance(id, _) =>
+            Js.Console.log(Printf.sprintf("Imandra[%d]: Found instance", id))
+          | Error(id, e) =>
+            Js.Console.error(Printf.sprintf("Imandra[%d]: %s", id, e))
+          | _ => ()
+          };
+
+          switch (self.state.fetchState) {
+          | FoundInstance(id, assignments) when self.state.fetchState == s =>
+            Js.Console.log(
+              Printf.sprintf("Imandra[%d]: Updating graph", id),
+            );
+            /* update graph when the state has actually been updated by the incoming action */
             forceGraph(
               "#seats",
               Decoders_bs.Encode.encode_value(
@@ -296,10 +338,9 @@ let make = _children => {
                 assignments,
               ),
             );
-
-          | Error(e) => Js.Console.error(e)
           | _ => ()
-          },
+          };
+        },
       )
 
     | GuestTextChanged(text) =>
@@ -518,7 +559,7 @@ let make = _children => {
             {s("The seating arrangement")}
           </Typography>
           {switch (self.state.fetchState) {
-           | NoInstance =>
+           | NoInstance(_) =>
              <Typography
                className={style([
                  width(px(900)),

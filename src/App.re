@@ -107,8 +107,6 @@ module D = App_decoders.Decode(Decoders_bs.Decode);
 module E = App_decoders.Encode(Decoders_bs.Encode);
 
 let sendToImandra = (state, send) => {
-  Js.Console.log(state.lastReqId);
-
   let togetherJson =
     Decoders_bs.Encode.encode_string(
       E.intPairs,
@@ -123,8 +121,6 @@ let sendToImandra = (state, send) => {
   let totalGuests = List.length(state.guests);
 
   let reqId = state.lastReqId + 1;
-
-  Js.Console.log(reqId);
 
   send(SetFetchState(Loading(reqId)));
 

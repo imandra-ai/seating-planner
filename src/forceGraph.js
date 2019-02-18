@@ -89,7 +89,7 @@ module.exports = function (selector, graph) {
         console.log("nodes changed");
 
         curSimulation = d3.forceSimulation()
-            .force("link", d3.forceLink().distance(45).id(function(d) { return d.id; }))
+            .force("link", d3.forceLink().distance(85).id(function(d) { return d.id; }))
             .force("charge", d3.forceManyBody())
             .force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -115,28 +115,34 @@ module.exports = function (selector, graph) {
                   .on("drag", dragged)
                   .on("end", dragended));
 
-        curLabels = curNodes.append("text")
-            .text(function(d) {
-                return d.id;
-            })
-            .attr('x', labelOffset.x)
-            .attr('y', labelOffset.y);
-
         curNodes.append("title")
             .text(function(d) { return d.id; });
 
     }
 
     if (curLinks) {
-        curLinks.remove();
+        svg.select(".links").remove();
     }
 
-    curLinks = svg.append("g")
+    curLinks = svg.insert("g", ".nodes")
         .attr("class", "links")
         .selectAll("line")
         .data(graph.links)
         .enter().append("line")
         .attr("stroke-width", function(d) { return 5; });
+
+    if (curLabels) {
+        curLabels.remove();
+    }
+    curLabels = curNodes.append("text")
+        .text(function(d) {
+            return d.id;
+        })
+        .attr('x', labelOffset.x)
+        .attr('y', labelOffset.y)
+        .style('font-weight', 'bold')
+        .style('font-size', '1em');
+
 
     curSimulation.force("link")
         .links(graph.links);

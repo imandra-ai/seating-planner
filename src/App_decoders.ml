@@ -18,41 +18,11 @@ module Encode (E : D.Encode.S) = struct
   let intPairs : (int * int) list encoder = fun xs ->
     xs |> list (fun x -> [fst x; snd x] |> list (fun y  -> int y))
 
-  let person_node : assignment encoder = fun x ->
-    obj [("id", string x.guest.name)
-        ;("type", string "person")
-        ;("group", int x.table)]
+  let assignment : assignment encoder = fun x ->
+    obj [("guest", string x.guest.name)
+        ;("table", int x.table)]
 
-  let table_node : int encoder = fun t ->
-    obj [("id", string (Printf.sprintf "Table %d" t))
-        ;("type", string "table")
-        ;("group", int t)]
-
-  let person_link : assignment encoder = fun x ->
-    obj [("source", string (Printf.sprintf "Table %d" x.table))
-        ;("target", string x.guest.name)
-        ]
-
-  type person_or_table =
-    | Person of assignment
-    | Table of int
-
-  let person_or_table_node : person_or_table encoder = function
-    | Person p -> person_node p
-    | Table t -> table_node t
-
-  let graph_of_assignments : assignment list encoder = fun xs ->
-    let persons =
-      xs
-      |> CCList.map (fun x -> Person x)
-    in
-    let tables =
-      xs
-      |> CCList.map (fun t -> t.table)
-      |> CCList.uniq ~eq:(=)
-      |> CCList.map (fun t -> Table t)
-    in
-    obj [("nodes", list person_or_table_node (persons @ tables))
-        ;("links", (list person_link xs))]
+  let assignments : assignment list encoder = fun xs ->
+    list assignment xs
 
 end [@@program]

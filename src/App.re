@@ -19,6 +19,8 @@ module PairSet =
     };
   });
 
+let new_graph_nodes: ref(list(App_visualise.node)) = ref([]);
+
 type initState =
   | Loading
   | Error(Imandra_client.Error.t)
@@ -327,12 +329,14 @@ let make = _children => {
               Printf.sprintf("Imandra[%d]: Updating graph", id),
             );
             /* update graph when the state has actually been updated by the incoming action */
+            /* let new_nodes = Visualise.nodes_of_assignments(assignments); */
+
+            /* if new_nodes == ^graph_nodes then */
+            /* clear_graph (); */
+
             forceGraph(
               "#seats",
-              Decoders_bs.Encode.encode_value(
-                E.graph_of_assignments,
-                assignments,
-              ),
+              Decoders_bs.Encode.encode_value(E.assignments, assignments),
             );
           | _ => ()
           };

@@ -4,8 +4,6 @@ open App_types;
 
 let s = ReasonReact.string;
 
-[@bs.module] external forceGraph: (string, Js.Json.t) => unit = "./forceGraph";
-
 module PairSet =
   Belt.Id.MakeComparable({
     type t = (int, int);
@@ -18,8 +16,6 @@ module PairSet =
       };
     };
   });
-
-let new_graph_nodes: ref(list(App_visualise.node)) = ref([]);
 
 type initState =
   | Loading

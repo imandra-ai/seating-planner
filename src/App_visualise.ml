@@ -1,5 +1,8 @@
 open App_types
 
+external updateNodes: string -> Js.Json.t -> unit = "updateNodes" [@@bs.module "./forceGraph"]
+external updateLinks: string -> Js.Json.t -> unit = "updateLinks" [@@bs.module "./forceGraph"]
+
 type node_ref =
   | Table of int
   | Guest of guest
@@ -14,8 +17,29 @@ type link =
   ; target: node_ref
   }
 
+module Encode = struct
+  open Decoders_bs.Encode
+
+  let node_ref = function
+    | Table t -> obj [("type", string "table"); ("id", int t)]
+    | Guest g -> obj [("type", string "guest"); ("id", int g.id); ("name", string g.name)]
+
+  let node (x : node) =
+    obj [("ref", node_ref x.ref_)
+        ;("group", int x.group)
+        ]
+
+  let link (x : link) =
+    obj [("source", node_ref x.source)
+        ;("target", node_ref x.target)
+        ]
+end
+
+let current_nodes : node list ref = ref ([])
+
 let nodes_of_assignments (xs : assignment list) : node list =
   (* person nodes and table nodes *)
+  (* sorted for stability of comparison *)
   ((xs
     |> List.map (fun a ->
         { ref_= Guest a.guest
@@ -59,3 +83,11 @@ let links_of_assignments (xs : assignment list) : link list =
        ; target = Guest b
        }
      ))
+
+let handle_new_assignments (selector : string) (xs : assignment list) =
+  let new_nodes = nodes_of_assignments xs in
+  let new_links = links_of_assignments xs in
+  (if new_nodes <> !current_nodes then
+     updateNodes selector (Decoders_bs.Encode.encode_value (Decoders_bs.Encode.list Encode.node) new_nodes));
+
+  updateLinks selector (Decoders_bs.Encode.encode_value (Decoders_bs.Encode.list Encode.link) new_links)

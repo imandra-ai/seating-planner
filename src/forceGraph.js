@@ -78,7 +78,6 @@ function ticked() {
 
 module.exports = function (selector, graph) {
     // https://bl.ocks.org/colbenkharrl/21b3808492b93a21de841bc5ceac4e47#file-preview-png
-    console.log(graph);
 
     var svg = d3.select(selector),
         width = +svg.attr("width"),
@@ -89,7 +88,7 @@ module.exports = function (selector, graph) {
         console.log("nodes changed");
 
         curSimulation = d3.forceSimulation()
-            .force("link", d3.forceLink().distance(85).id(function(d) { return d.id; }))
+            .force("link", d3.forceLink().distance(65).id(function(d) { return d.id; }))
             .force("charge", d3.forceManyBody())
             .force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -97,28 +96,10 @@ module.exports = function (selector, graph) {
             .nodes(graph.nodes)
             .on("tick", ticked);
 
-        if (curNodes) {
-            curNodes.remove();
-        }
-
-        curNodes = svg.append("g")
-            .attr("class", "nodes")
-            .selectAll("g")
-            .data(graph.nodes)
-            .enter().append("g");
-
-        curCircles = curNodes.append("circle")
-            .attr("r", function(d) { if (d.type == 'table') { return 25; } else { return 5; } })
-            .attr("fill", function(d) { return color(d.group); })
-            .call(d3.drag()
-                  .on("start", dragstarted)
-                  .on("drag", dragged)
-                  .on("end", dragended));
-
-        curNodes.append("title")
-            .text(function(d) { return d.id; });
-
+        curGraph = graph;
     }
+
+    curGraph.links = graph.links;
 
     if (curLinks) {
         svg.select(".links").remove();
@@ -127,13 +108,35 @@ module.exports = function (selector, graph) {
     curLinks = svg.insert("g", ".nodes")
         .attr("class", "links")
         .selectAll("line")
-        .data(graph.links)
+        .data(curGraph.links)
         .enter().append("line")
         .attr("stroke-width", function(d) { return 5; });
 
     if (curLabels) {
         curLabels.remove();
     }
+
+    if (curNodes) {
+        curNodes.remove();
+    }
+
+    curNodes = svg.append("g")
+        .attr("class", "nodes")
+        .selectAll("g")
+        .data(curGraph.nodes)
+        .enter().append("g");
+
+    curCircles = curNodes.append("circle")
+        .attr("r", function(d) { if (d.type == 'table') { return 25; } else { return 5; } })
+        .attr("fill", function(d) { return color(d.group); })
+        .call(d3.drag()
+              .on("start", dragstarted)
+              .on("drag", dragged)
+              .on("end", dragended));
+
+    curNodes.append("title")
+        .text(function(d) { return d.id; });
+
     curLabels = curNodes.append("text")
         .text(function(d) {
             return d.id;
@@ -141,13 +144,12 @@ module.exports = function (selector, graph) {
         .attr('x', labelOffset.x)
         .attr('y', labelOffset.y)
         .style('font-weight', 'bold')
-        .style('font-size', '1em');
-
+        .style('font-size', '1em')
+        .style('pointer-events', 'none');
 
     curSimulation.force("link")
-        .links(graph.links);
+        .links(curGraph.links);
 
-    curSimulation.alphaTarget(0.3).velocityDecay(0.8).restart();
+    curSimulation.alphaTarget(0.9).velocityDecay(0.9).restart();
 
-    curGraph = graph;
 };

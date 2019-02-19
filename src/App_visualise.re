@@ -1,6 +1,7 @@
 module U = App_visualise_util;
 
-[@bs.val] external requestAnimationFrame: (float => unit) => float = "";
+[@bs.val] external requestAnimationFrame: (float => unit) => int = "";
+[@bs.val] external cancelAnimationFrame: int => unit = "";
 
 type assignments =
   | Waiting
@@ -51,7 +52,19 @@ let make = (~assignments, _children) => {
       self.state.simNodes := U.merge_with_sim_nodes(self.state.simNodes^, x)
     | _ => self.state.simNodes := U.empty_sim_nodes
     };
-    {...self.state, assignments};
+
+    let animateReqId =
+      switch (assignments, self.state.animateReqId) {
+      | (FoundInstance(_), None) =>
+        Some(requestAnimationFrame(dt => Js.Console.log(dt)))
+      | (FoundInstance(_), Some(_reqId)) => self.state.animateReqId
+      | (_, Some(reqId)) =>
+        cancelAnimationFrame(reqId);
+        None;
+      | _ => self.state.animateReqId
+      };
+
+    {...self.state, assignments, animateReqId};
   },
   render: self => {
     let _cx =

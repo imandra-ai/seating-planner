@@ -39,7 +39,12 @@ let make = (~assignments, _children) => {
           | _ => U.empty_sim_nodes
           },
         ),
-      animateReqId: None,
+      animateReqId:
+        switch (assignments) {
+        | FoundInstance(_) =>
+          Some(requestAnimationFrame(dt => Js.Console.log(dt)))
+        | _ => None
+        },
     };
   },
   reducer: (action, state) =>

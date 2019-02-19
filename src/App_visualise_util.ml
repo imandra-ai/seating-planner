@@ -1,8 +1,5 @@
 open App_types
 
-external updateNodes: string -> Js.Json.t -> unit = "updateNodes" [@@bs.module "./forceGraph"]
-external updateLinks: string -> Js.Json.t -> unit = "updateLinks" [@@bs.module "./forceGraph"]
-
 type node_ref =
   | Table of int
   | Guest of guest
@@ -35,11 +32,7 @@ module Encode = struct
         ]
 end
 
-let current_nodes : node list ref = ref ([])
-
 let nodes_of_assignments (xs : assignment list) : node list =
-  (* person nodes and table nodes *)
-  (* sorted for stability of comparison *)
   ((xs
     |> List.map (fun a ->
         { ref_= Guest a.guest
@@ -52,8 +45,8 @@ let nodes_of_assignments (xs : assignment list) : node list =
         { ref_ = Table a.table
         ; group = a.table
         }
-      )))
-  |> List.sort compare
+      ))
+  )
 
 let links_of_assignments (xs : assignment list) : link list =
   (* person to table links, and person to person links to keep them apart on a single table *)
@@ -84,10 +77,53 @@ let links_of_assignments (xs : assignment list) : link list =
        }
      ))
 
-let handle_new_assignments (selector : string) (xs : assignment list) =
-  let new_nodes = nodes_of_assignments xs in
-  let new_links = links_of_assignments xs in
-  (if new_nodes <> !current_nodes then
-     updateNodes selector (Decoders_bs.Encode.encode_value (Decoders_bs.Encode.list Encode.node) new_nodes));
+type 'a with_sim =
+  { t: 'a
+  ; x : float
+  ; y : float
+  ; vx : float
+  ; vy : float
+  }
 
-  updateLinks selector (Decoders_bs.Encode.encode_value (Decoders_bs.Encode.list Encode.link) new_links)
+module NodeRefCompare =
+  Belt.Id.MakeComparable(struct
+    type t = node_ref
+    let cmp = compare
+  end)
+
+
+type sim_nodes = (node_ref, node with_sim, NodeRefCompare.identity) Belt.Map.t
+
+let empty_sim_nodes : sim_nodes = Belt.Map.make ~id:(module NodeRefCompare)
+
+let with_default_sim (a : node) : node with_sim =
+  { t = a
+  ; x = 0.
+  ; y = 0.
+  ; vx = 0.
+  ; vy = 0.
+  }
+
+let merge_with_sim_nodes (s : sim_nodes) (assignments : assignment list) =
+  let nodes = nodes_of_assignments assignments in
+  let nodes_by_key = Belt.Map.fromArray ~id:(module NodeRefCompare) (
+      nodes
+      |> List.map (fun n -> (n.ref_, with_default_sim n))
+      |> Array.of_list
+    ) in
+  Belt.Map.merge s nodes_by_key (fun _k a b -> match (a, b) with
+      | None, None -> None
+      | (Some _), None -> None
+      | None, (Some a) -> Some a
+      | (Some a), (Some _b) -> Some a
+    )
+
+(* let handle_new_assignments (selector : string) (xs : assignment list) =
+ *   let new_nodes = nodes_of_assignments xs in
+ *   let new_links = links_of_assignments xs in
+ *   updateNodes selector (Decoders_bs.Encode.encode_value (Decoders_bs.Encode.list Encode.node) new_nodes);
+ *   updateLinks selector (Decoders_bs.Encode.encode_value (Decoders_bs.Encode.list Encode.link) new_links) *)
+
+(* let update (xs : assignment list) =
+ *   let new_nodes = nodes_of_assignments xs in
+ *   merge_with_sim_nodes new_nodes () *)

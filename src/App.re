@@ -320,20 +320,20 @@ let make = _children => {
           };
 
           switch (self.state.fetchState) {
-          | FoundInstance(id, assignments) when self.state.fetchState == s =>
-            Js.Console.log(
-              Printf.sprintf("Imandra[%d]: Updating graph", id),
-            );
-            /* update graph when the state has actually been updated by the incoming action */
-            /* let new_nodes = Visualise.nodes_of_assignments(assignments); */
+          | FoundInstance(id, _assignments) when self.state.fetchState == s =>
+            Js.Console.log(Printf.sprintf("Imandra[%d]: Updating graph", id))
 
-            /* if new_nodes == ^graph_nodes then */
-            /* clear_graph (); */
+          /* App_visualise.handle_new_assignments("#seats", assignments); */
+          /* update graph when the state has actually been updated by the incoming action */
+          /* let new_nodes = Visualise.nodes_of_assignments(assignments); */
 
-            forceGraph(
-              "#seats",
-              Decoders_bs.Encode.encode_value(E.assignments, assignments),
-            );
+          /* if new_nodes == ^graph_nodes then */
+          /* clear_graph (); */
+
+          /* forceGraph( */
+          /*   "#seats", */
+          /*   Decoders_bs.Encode.encode_value(E.assignments, assignments), */
+          /* ); */
           | _ => ()
           };
         },
@@ -554,20 +554,17 @@ let make = _children => {
           <Typography variant=`H4 className=paperHeadingStyles>
             {s("The seating arrangement")}
           </Typography>
-          {switch (self.state.fetchState) {
-           | NoInstance(_) =>
-             <Typography
-               className={style([
-                 width(px(900)),
-                 height(px(500)),
-                 marginTop(px(5)),
-                 textAlign(center),
-                 paddingTop(px(200)),
-               ])}>
-               {s("No workable arrangement found")}
-             </Typography>
-           | _ => <svg id="seats" width="900" height="500" />
-           }}
+          <App_visualise
+            assignments={
+              switch (self.state.fetchState) {
+              | Waiting => Waiting
+              | Loading(_) => Loading
+              | Error(_, x) => Error(x)
+              | FoundInstance(_, xs) => FoundInstance(xs)
+              | NoInstance(_) => NoInstance
+              }
+            }
+          />
         </Paper>
       </main>
     ),

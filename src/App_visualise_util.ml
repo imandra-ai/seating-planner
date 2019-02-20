@@ -77,12 +77,46 @@ let links_of_assignments (xs : assignment list) : link list =
        }
      ))
 
+external document : Dom.document = "" [@@bs.val]
+
+module NodeSvg = struct
+  type svg
+  type t
+
+  external query_svg : Dom.document -> string -> svg = "querySelector" [@@bs.send]
+  external query_all_svg : svg -> string -> t array = "querySelectorAll" [@@bs.send]
+  external create_element_ns : Dom.document -> string -> string -> t = "createElementNS" [@@bs.send]
+  external append_node : svg -> t -> unit = "appendChild" [@@bs.send]
+  external remove_node : svg -> t -> unit = "removeChild" [@@bs.send]
+  external set_string_attribute : t -> string -> string -> unit = "setAttribute" [@@bs.send]
+
+  let create_svg_el (el_name : string) =
+    create_element_ns document "http://www.w3.org/2000/svg" el_name
+
+  let append_g (svg : svg) : t =
+    let g = create_svg_el "g" in
+    append_node svg g;
+    g
+
+  let delete_g (svg : svg) (g : t) =
+    remove_node svg g
+
+  let set_x (t : t) (x : float) =
+    set_string_attribute t "x" (string_of_int (int_of_float x))
+
+  let all_gs (svg : svg) : t array =
+    query_all_svg svg "g"
+
+end
+
+
 type 'a with_sim =
   { t: 'a
   ; x : float
   ; y : float
   ; vx : float
   ; vy : float
+  ; nodeRef: NodeSvg.t option ref
   }
 
 module NodeRefCompare =
@@ -102,6 +136,7 @@ let with_default_sim (a : node) : node with_sim =
   ; y = 0.
   ; vx = 0.
   ; vy = 0.
+  ; nodeRef = ref(None)
   }
 
 let merge_with_sim_nodes (s : sim_nodes) (assignments : assignment list) =
@@ -117,6 +152,41 @@ let merge_with_sim_nodes (s : sim_nodes) (assignments : assignment list) =
       | None, (Some a) -> Some a
       | (Some a), (Some _b) -> Some a
     )
+
+let append_new (svg : NodeSvg.svg) (s : sim_nodes) =
+  Belt.Map.forEach s (fun _k v ->
+      match !(v.nodeRef) with
+      | None ->
+        begin
+          let r = NodeSvg.append_g svg in
+          v.nodeRef := Some r;
+          ()
+        end
+
+      | Some _ -> ()
+
+    )
+
+let remove_old (svg : NodeSvg.svg) (s : sim_nodes) =
+  let all_gs = NodeSvg.all_gs svg |> Array.to_list in
+  let unreffed = all_gs |> List.filter (fun g ->
+      Belt.Map.every s (fun _k v ->
+          match !(v.nodeRef) with
+          | None -> true
+          | Some r ->
+            r <> g
+        )
+    )
+  in
+  Belt.List.forEach unreffed (fun g ->
+      NodeSvg.remove_node svg g
+    )
+
+
+let animate (selector : string) (s : sim_nodes) =
+  let svg = NodeSvg.query_svg document selector in
+  remove_old svg s;
+  append_new svg s;
 
 (* let handle_new_assignments (selector : string) (xs : assignment list) =
  *   let new_nodes = nodes_of_assignments xs in

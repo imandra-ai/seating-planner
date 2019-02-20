@@ -12,9 +12,9 @@ type assignments =
 
 type state = {
   simNodes: ref(U.sim_nodes),
+  animating: ref(bool),
   t0: float,
   tNow: float,
-  animateReqId: option(int),
   assignments,
 };
 
@@ -24,6 +24,17 @@ type action =
 let component = ReasonReact.reducerComponent("App_visualise");
 
 let s = ReasonReact.string;
+
+let rec runAnimation = (animating: ref(bool)) => {
+  let _ =
+    requestAnimationFrame(_dt =>
+      if (animating^) {
+        runAnimation(animating);
+        ();
+      }
+    );
+  ();
+};
 
 let make = (~assignments, _children) => {
   ...component,
@@ -39,12 +50,17 @@ let make = (~assignments, _children) => {
           | _ => U.empty_sim_nodes
           },
         ),
-      animateReqId:
+      animating: {
+        let r = ref(false);
         switch (assignments) {
         | FoundInstance(_) =>
-          Some(requestAnimationFrame(dt => Js.Console.log(dt)))
-        | _ => None
-        },
+          r := true;
+          runAnimation(r);
+        | _ => ()
+        };
+
+        r;
+      },
     };
   },
   reducer: (action, state) =>
@@ -58,18 +74,25 @@ let make = (~assignments, _children) => {
     | _ => self.state.simNodes := U.empty_sim_nodes
     };
 
-    let animateReqId =
-      switch (assignments, self.state.animateReqId) {
-      | (FoundInstance(_), None) =>
-        Some(requestAnimationFrame(dt => Js.Console.log(dt)))
-      | (FoundInstance(_), Some(_reqId)) => self.state.animateReqId
-      | (_, Some(reqId)) =>
-        cancelAnimationFrame(reqId);
-        None;
-      | _ => self.state.animateReqId
+    let shouldBeAnimating =
+      switch (assignments, self.state.animating^) {
+      | (FoundInstance(_), false) => true
+      | (FoundInstance(_), true) =>
+        /* already running */
+        false
+      | (_, true) => false
+      | _ => false
       };
 
-    {...self.state, assignments, animateReqId};
+    let _ =
+      if (! self.state.animating^ && shouldBeAnimating) {
+        self.state.animating := true;
+        runAnimation(self.state.animating);
+      } else if (self.state.animating^ && !shouldBeAnimating) {
+        self.state.animating := true;
+      };
+
+    {...self.state, assignments};
   },
   render: self => {
     let _cx =
@@ -82,7 +105,8 @@ let make = (~assignments, _children) => {
        | Loading => <div> {s("loading")} </div>
        | Error(x) => <div> {s(Printf.sprintf("Error: %s", x))} </div>
        | NoInstance => <div> {s("no instance")} </div>
-       | FoundInstance(_) => <svg width="900" height="500" />
+       | FoundInstance(_) =>
+         <svg id="seats" width="900" height="500"> <g /> </svg>
        }}
     </div>;
   },

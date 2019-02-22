@@ -371,7 +371,7 @@ let make = _children => {
     MaterialUi.(
       <main
         className={style([
-          width(px(960)),
+          width(px(1280)),
           marginLeft(auto),
           marginRight(auto),
           padding(px(20)),

@@ -70,7 +70,7 @@ let parseGuests = (s: string): list(guest) =>
    Needs to be **after** state and action declarations! */
 let component = ReasonReact.reducerComponent("App");
 
-let initialGuestText = {|John, Paul, George, Ringo, Jack, Jones, Jonah, Jonny|};
+let initialGuestText = {|Doc, Grumpy, Happy, Sleepy, Bashful, Sneezy, Dopey|};
 
 let normPair = ((a, b)) => (min(a, b), max(a, b));
 

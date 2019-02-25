@@ -1,6 +1,6 @@
 # seating-planner
 
-![Imandra](img/imandra_raas_logo.svg "Imandra") 
+![Imandra](https://raw.githubusercontent.com/AestheticIntegration/reasonml-tic-tac-toe/master/img/imandra_raas_logo.svg "Imandra") 
 
 ## Run Project
 

@@ -1,5 +1,7 @@
 # seating-planner
 
+![Imandra](img/imandra_raas_logo.svg "Imandra") 
+
 ## Run Project
 
 ```sh
